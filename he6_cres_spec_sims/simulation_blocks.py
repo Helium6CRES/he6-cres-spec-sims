@@ -77,7 +77,11 @@ class DotDict(dict):
 
 
 class Config:
-    """A class used to contain the field map and configurable parameters
+    """
+    TODO: Add a default value for each of these. The dictionary gets overwritten. 
+
+
+    A class used to contain the field map and configurable parameters
     associated with a given simulation configuration file (for example:
     config_example.json).
 
