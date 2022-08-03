@@ -27,8 +27,8 @@ import numpy as np
 # from numpy.random import uniform
 
 import scipy.integrate as integrate
-from scipy.optimize import fmin
-from scipy.optimize import fminbound
+from scipy.fft import fft
+from scipy.optimize import fmin, fminbound
 from scipy.interpolate import interp1d
 import scipy.special as ss
 
@@ -627,6 +627,46 @@ def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
 
     return sidebands, mod_index
 
+def anharmonic_axial_trajectory():
+    """ Computes the time series of the beta axial motion over a single
+    found by integrating the relevant ODE. Returns [z(t), vz(t)].
+    """
+    T  = 1. / axial_freq()
+    nHarmonics = 128
+    dt = T/ nHarmonics
+    t = np.arange(0,T,dt)
+
+    mu = p0**2 * np.sin(theta0)**2 / (2. * me * B0) #### XXX: Check gammas!!!
+    ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
+    ode = lambda t, y: [y[1], - mu / me * dfTot(y[0])]
+    result = integrate.solve_ivp(ode, [t[0], t[-1]], (zmax, 0), t_eval=t,rtol=1e-7)
+
+    ####### [0] is z array, [1] is vz array ######
+    return result.y
+
+def instantaneous_frequency(z, vz):
+    """ Computes the instantaneous (angular) frequency as a function of time
+    """
+    return q * B(z) / (me * gamma) * ( 1. + vz / v_ph)
+
+def anharmonic_sideband_powers(num_sidebands=7):
+    omega_c -= np.mean(omega_c)
+    Phi = np.cumsum(omega_c) * dt
+    expPhi = np.exp(1j * Phi)
+    yf = np.abs(fft(expPhi,norm="forward"))
+    yf = yf[:nHarmonics//2]
+
+    # Calculate list of (frequency, amplitude) of sidebands
+    sidebands = []
+
+    for k in range(-num_sidebands, num_sidebands + 1):
+        freq = avg_cycl_freq + k * axial_freq
+        magnitude = yf[abs(k)]
+        pair = (freq, magnitude)
+        sidebands.append(pair)
+
+    ### Intentionally returns modulation index of nan as it is not (meaningfully) defined for harmonic traps
+    return sidebands, np.nan
 
 def power_larmor(field, frequency):
 
