@@ -30,6 +30,7 @@ import scipy.integrate as integrate
 from scipy.fft import fft
 from scipy.optimize import fmin, fminbound
 from scipy.interpolate import interp1d
+from scipy.misc import derivative
 import scipy.special as ss
 
 # Math constants.
@@ -620,7 +621,7 @@ def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
 
     return sidebands, mod_index
 
-def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile):
+def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics):
     """ Computes the time series of the beta axial motion over a single
     found by integrating the relevant ODE. Returns [z(t), vz(t)].
     """
@@ -629,7 +630,6 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
         return False
 
     T = 1./ axial_freq
-    nHarmonics = 128
     dt = T/ nHarmonics
     t = np.arange(0,T,dt)
 
@@ -637,7 +637,8 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     ### Note: This is the non-relativistic magnetic moment. One gets the same ODE if M -> gamma M in the lambda ode.
     Bmin = trap_profile.field_strength(rho, 0)
     mu = p0**2 * np.sin(center_pitch_angle)**2 / (2. * M * Bmin)
-    dBdz = lambda z: trap_profile.field_derivative(rho, z)
+    Bz = lambda z: trap_profile.field_strength(rho,z) 
+    dBdz = lambda z: derivative(Bz, z, dx=1e-6)
     ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
     ode = lambda t, y: [y[1], - mu / M * dBdz(y[0])]
     result = integrate.solve_ivp(ode, [t[0], t[-1]], (zmax, 0), t_eval=t,rtol=1e-7)
@@ -645,28 +646,29 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     ####### [0] is z array, [1] is vz array ######
     return result.y
 
-def instantaneous_frequency(rho, z, vz, trap_profile):
+def instantaneous_frequency(energy, rho, z, vz, avg_cycl_freq, trap_profile):
     """ Computes the instantaneous (angular) frequency as a function of time
     """
     if not trap_profile.is_trap:
         print("ERROR: Given trap profile is not a valid trap")
         return False
-    Bz = trap_profile.field_strength(rho, z)
+    Bz = lambda z: trap_profile.field_strength(rho, z)
     omega = 2 * PI * avg_cycl_freq
     beta = waveguide_beta(omega)
     phase_vel = omega / beta
     return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / phase_vel)
 
 
-def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, num_sidebands=7):
+def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, num_sidebands=7, nHarmonics=128):
 
     ### Compute particle trajectory over single period
-    sol = anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile)
+    sol = anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics)
     z = sol[0]
     vz = sol[1]
+    dt = 1./ (nHarmonics * axial_freq)
 
     ### Convert particle trajectory to instantaneous radiated frequency (Doppler + B-field)
-    omega_c = instantaneous_frequency(rho,z,vz,trap_profile)
+    omega_c = instantaneous_frequency(energy, rho,z,vz, avg_cycl_freq, trap_profile)
 
     omega_c -= np.mean(omega_c)
     Phi = np.cumsum(omega_c) * dt
