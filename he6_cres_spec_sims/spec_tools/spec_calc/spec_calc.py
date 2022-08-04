@@ -36,7 +36,6 @@ import scipy.special as ss
 
 PI = math.pi
 RAD_TO_DEG = 180 / math.pi
-P11_PRIME = 1.84118  # first zero of J1 prime (bessel functions)
 
 # Physics constants.
 
@@ -346,15 +345,9 @@ def mod_index(avg_cycl_freq, zmax):
     """Calculates modulation index from average cyclotron frequency
     (avg_cycl_freq) and maximum axial amplitude (zmax).
     """
-
-    # fixed experiment parameters
-    waveguide_radius = 0.578e-2
-    kc = P11_PRIME / waveguide_radius
-
     # calculated parameters
     omega = 2 * PI * avg_cycl_freq
-    k_wave = omega / C
-    beta = np.sqrt(k_wave**2 - kc**2)
+    beta = waveguide_beta(omega)
 
     mod_index = zmax * beta
 
@@ -590,36 +583,35 @@ def t(energy, zpos, center_pitch_angle, rho, trap_profile):
 
     return t_vect(energy, zpos, center_pitch_angle, rho, trap_profile)
 
+def waveguide_beta(omega):
+    # fixed experiment parameters
+    waveguide_radius = 0.578e-2
+    P11_PRIME = 1.84118  # first zero of J1 prime (bessel functions)
+    kc = P11_PRIME / waveguide_radius
+
+    # calculated parameters
+    k_wave = omega / C
+    beta = np.sqrt(k_wave**2 - kc**2)
+    return beta
+
 def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
 
     """Calculates relative magnitudes of num_sidebands sidebands from
     average cyclotron frequency (avg_cycl_freq), axial frequency
     (axial_freq), and maximum axial amplitude (zmax).
     """
-
-    # fixed experiment parameters
-    waveguide_radius = 0.578e-2
-    kc = P11_PRIME / waveguide_radius
-
-    # calculated parameters
     omega = 2 * PI * avg_cycl_freq
-    k_wave = omega / C
-    beta = np.sqrt(k_wave**2 - kc**2)
-
+    beta = waveguide_beta(omega)
     phase_vel = omega / beta
 
     mod_index = omega * zmax / phase_vel
-
-    # Calculate K factor
-    K = 2 * PI * avg_cycl_freq * zmax / phase_vel
 
     # Calculate list of (frequency, amplitude) of sidebands
     sidebands = []
 
     for k in range(-num_sidebands, num_sidebands + 1):
-
         freq = avg_cycl_freq + k * axial_freq
-        magnitude = abs(ss.jv(k, K))
+        magnitude = abs(ss.jv(k, mod_index))
 
         pair = (freq, magnitude)
         sidebands.append(pair)
@@ -656,7 +648,10 @@ def instantaneous_frequency(rho, z, vz, trap_profile):
         print("ERROR: Given trap profile is not a valid trap")
         return False
     Bz = trap_profile.field_strength(rho, z)
-    return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / v_ph) #XXX v_ph not defined
+    omega = 2 * PI * avg_cycl_freq
+    beta = waveguide_beta(omega)
+    phase_vel = omega / beta
+    return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / phase_vel)
 
 
 def anharmonic_sideband_powers(avg_cycl_freq, axial_freq, omega_c, dt,  num_sidebands=7):
