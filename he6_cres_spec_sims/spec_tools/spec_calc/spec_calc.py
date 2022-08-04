@@ -590,7 +590,6 @@ def t(energy, zpos, center_pitch_angle, rho, trap_profile):
 
     return t_vect(energy, zpos, center_pitch_angle, rho, trap_profile)
 
-
 def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
 
     """Calculates relative magnitudes of num_sidebands sidebands from
@@ -627,29 +626,40 @@ def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
 
     return sidebands, mod_index
 
-def anharmonic_axial_trajectory():
+def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, trap_profile):
     """ Computes the time series of the beta axial motion over a single
     found by integrating the relevant ODE. Returns [z(t), vz(t)].
     """
-    T  = 1. / axial_freq()
+    if not trap_profile.is_trap:
+        print("ERROR: Given trap profile is not a valid trap")
+        return False
+
+    T = 1./ axial_freq(energy, center_pitch_angle, rho, trap_profile)
     nHarmonics = 128
     dt = T/ nHarmonics
     t = np.arange(0,T,dt)
 
-    mu = p0**2 * np.sin(theta0)**2 / (2. * me * B0) #### XXX: Check gammas!!!
+    mu = p0**2 * np.sin(theta0)**2 / (2. * M * B0) #### XXX: Check gamma(energy)
     ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
-    ode = lambda t, y: [y[1], - mu / me * dfTot(y[0])]
+    dBdz = lambda z: field_grad([rho,0,z])
+
+    ode = lambda t, y: [y[1], - mu / M * dBdz(y[0])]
     result = integrate.solve_ivp(ode, [t[0], t[-1]], (zmax, 0), t_eval=t,rtol=1e-7)
 
     ####### [0] is z array, [1] is vz array ######
     return result.y
 
-def instantaneous_frequency(z, vz):
+def instantaneous_frequency(rho, z, vz, trap_profile):
     """ Computes the instantaneous (angular) frequency as a function of time
     """
-    return q * B(z) / (me * gamma) * ( 1. + vz / v_ph)
+    if not trap_profile.is_trap:
+        print("ERROR: Given trap profile is not a valid trap")
+        return False
+    Bz = trap_profile.field_strength(rho, z)
+    return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / v_ph) #XXX v_ph not defined
 
-def anharmonic_sideband_powers(num_sidebands=7):
+
+def anharmonic_sideband_powers(avg_cycl_freq, axial_freq, omega_c, dt,  num_sidebands=7):
     omega_c -= np.mean(omega_c)
     Phi = np.cumsum(omega_c) * dt
     expPhi = np.exp(1j * Phi)
