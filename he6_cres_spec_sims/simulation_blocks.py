@@ -641,6 +641,8 @@ class BandBuilder:
                     row["rho_center"],
                     row["avg_cycl_freq"],
                     row["axial_freq"],
+                    row["zmax"],
+                    self.config.trap_profile,
                     num_sidebands=sideband_num,
                 )[0]
 
