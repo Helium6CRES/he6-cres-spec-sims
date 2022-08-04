@@ -616,6 +616,8 @@ class BandBuilder:
 
         print("~~~~~~~~~~~~BandBuilder Block~~~~~~~~~~~~~~\n")
         sideband_num = self.config.bandbuilder.sideband_num
+        harmonic_sidebands = self.config.bandbuilder.harmonic_sidebands
+
         frac_total_segment_power_cut = (
             self.config.bandbuilder.frac_total_segment_power_cut
         )
@@ -625,12 +627,22 @@ class BandBuilder:
 
         for segment_index, row in segments_df.iterrows():
 
-            sideband_amplitudes = sc.sideband_calc(
-                row["avg_cycl_freq"],
-                row["axial_freq"],
-                row["zmax"],
-                num_sidebands=sideband_num,
-            )[0]
+            if harmonic_sidebands:
+                sideband_amplitudes = sc.sideband_calc(
+                    row["avg_cycl_freq"],
+                    row["axial_freq"],
+                    row["zmax"],
+                    num_sidebands=sideband_num,
+                )[0]
+            else:
+                sideband_amplitudes = sc.anharmonic_sideband_calc(
+                    row["energy"],
+                    row["center_theta"],
+                    row["rho_center"],
+                    row["avg_cycl_freq"],
+                    row["axial_freq"],
+                    num_sidebands=sideband_num,
+                )[0]
 
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
 
