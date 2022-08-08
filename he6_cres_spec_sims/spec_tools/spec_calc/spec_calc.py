@@ -636,7 +636,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     p0 = M * velocity(energy)
     ### Note: This is the non-relativistic magnetic moment. One gets the same ODE if M -> gamma M in the lambda ode.
     Bmin = trap_profile.field_strength(rho, 0)
-    mu = p0**2 * np.sin(center_pitch_angle)**2 / (2. * M * Bmin)
+    mu = p0**2 * np.sin(center_pitch_angle / RAD_TO_DEG )**2 / (2. * M * Bmin)
     Bz = lambda z: trap_profile.field_strength(rho,z) 
     dBdz = lambda z: derivative(Bz, z, dx=1e-6)
     ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
@@ -660,6 +660,9 @@ def instantaneous_frequency(energy, rho, z, vz, avg_cycl_freq, trap_profile):
 
 
 def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, num_sidebands=7, nHarmonics=128):
+
+    #c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+    #rho= np.sqrt(rho**2 + c_r**2 / 2)
 
     ### Compute particle trajectory over single period
     sol = anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics)
