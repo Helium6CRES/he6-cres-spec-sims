@@ -597,29 +597,34 @@ def waveguide_beta(omega):
     beta = np.sqrt(k_wave**2 - kc**2)
     return beta
 
-def sideband_calc(avg_cycl_freq, axial_freq, zmax, num_sidebands=7):
+def sideband_calc(avg_cycl_freq, axial_freq, zmax, magnetic_modulation=True, num_sidebands=7, nHarmonics=128):
 
     """Calculates relative magnitudes of num_sidebands sidebands from
     average cyclotron frequency (avg_cycl_freq), axial frequency
     (axial_freq), and maximum axial amplitude (zmax).
     """
-    omega = 2 * PI * avg_cycl_freq
-    beta = waveguide_beta(omega)
-    phase_vel = omega / beta
+    T = 1./ axial_freq
+    dt = T/ nHarmonics
+    t = np.arange(0,T,dt)
+    omegaA = 2. * np.pi * axial_freq
+    z = zmax*np.sin(omegaA * t)
+    vz = zmax*omegaA*np.cos(omegaA * t)
 
-    mod_index = omega * zmax / phase_vel
+    return FFT_sideband_amplitudes(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, magnetic_modulation, num_sidebands, nHarmonics)
 
-    # Calculate list of (frequency, amplitude) of sidebands
-    sidebands = []
 
-    for k in range(-num_sidebands, num_sidebands + 1):
-        freq = avg_cycl_freq + k * axial_freq
-        magnitude = abs(ss.jv(k, mod_index))
+def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, magnetic_modulation=True, num_sidebands=7, nHarmonics=128):
 
-        pair = (freq, magnitude)
-        sidebands.append(pair)
+    #c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+    #rho= np.sqrt(rho**2 + c_r**2 / 2)
 
-    return sidebands, mod_index
+    ### Compute particle trajectory over single period
+    sol = anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics)
+    z = sol[0]
+    vz = sol[1]
+    return FFT_sideband_amplitudes(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, magnetic_modulation, num_sidebands, nHarmonics)
+
+
 
 def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics):
     """ Computes the time series of the beta axial motion over a single
@@ -646,7 +651,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     ####### [0] is z array, [1] is vz array ######
     return result.y
 
-def instantaneous_frequency(energy, rho, z, vz, avg_cycl_freq, trap_profile):
+def instantaneous_frequency(energy, rho, z, vz, avg_cycl_freq, trap_profile=None, magnetic_modulation=True):
     """ Computes the instantaneous (angular) frequency as a function of time
     """
     if not trap_profile.is_trap:
@@ -656,28 +661,31 @@ def instantaneous_frequency(energy, rho, z, vz, avg_cycl_freq, trap_profile):
     omega = 2 * PI * avg_cycl_freq
     beta = waveguide_beta(omega)
     phase_vel = omega / beta
-    return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / phase_vel)
+
+    if magnetic_modulation:
+        return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / phase_vel)
+    else:
+        ### XXX: Check!
+        ### Instead of evaluating at B(0), use average_cyc_freq to say B field contribution is const. equal to avg
+        return omega * ( 1. + vz / phase_vel)
 
 
-def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, num_sidebands=7, nHarmonics=128):
+def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, magnetic_modulation=True, num_sidebands=7, nHarmonics=128):
+    """  Computes sideband amplitudes as a function of axial trajectory, magnetic field profile. Returns list with sidebands
+    """
+    if not magnetic_modulation:
+        h =  mod_index(avg_cycl_freq, zmax)
+        yf = [abs(ss.jv(k, h)) for k in range(num_sidebands+1)]
+    else:
+        ### Convert particle trajectory to instantaneous radiated frequency (Doppler + B-field)
+        dt = 1./ (nHarmonics * axial_freq)
 
-    #c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
-    #rho= np.sqrt(rho**2 + c_r**2 / 2)
-
-    ### Compute particle trajectory over single period
-    sol = anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics)
-    z = sol[0]
-    vz = sol[1]
-    dt = 1./ (nHarmonics * axial_freq)
-
-    ### Convert particle trajectory to instantaneous radiated frequency (Doppler + B-field)
-    omega_c = instantaneous_frequency(energy, rho,z,vz, avg_cycl_freq, trap_profile)
-
-    omega_c -= np.mean(omega_c)
-    Phi = np.cumsum(omega_c) * dt
-    expPhi = np.exp(1j * Phi)
-    yf = np.abs(fft(expPhi,norm="forward"))
-    yf = yf[:nHarmonics//2]
+        omega_c = instantaneous_frequency(energy, rho,z,vz, avg_cycl_freq, trap_profile)
+        omega_c -= np.mean(omega_c)
+        Phi = np.cumsum(omega_c) * dt
+        expPhi = np.exp(1j * Phi)
+        yf = np.abs(fft(expPhi,norm="forward"))
+        yf = yf[:nHarmonics//2]
 
     # Calculate list of (frequency, amplitude) of sidebands
     sidebands = []
