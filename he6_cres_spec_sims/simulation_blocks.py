@@ -980,7 +980,8 @@ class Daq:
 
 
 class SpecBuilder:
-    """TODO:Document"""
+    """TODO:Document
+        TODO: This doesn't need the extra config path argument. It's ugly and """
 
     def __init__(self, config, config_path):
 

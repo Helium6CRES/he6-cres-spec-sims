@@ -16,7 +16,7 @@ class FDpacket:
     Header length and structure are based on R2DAQ (aka ArtooDaq)
     """
 
-    BYTES_IN_PAYLOAD = 8192
+    BYTES_IN_PAYLOAD = 4096
     BYTES_IN_HEADER = 32
     BYTES_IN_PACKET = BYTES_IN_PAYLOAD + BYTES_IN_HEADER
 
@@ -96,11 +96,14 @@ class FDpacket:
         return x
 
     @classmethod
-    def from_byte_string(cls,bytestr):
+    def from_byte_string(cls,bytestr, BYTES_IN_PAYLOAD = 4096 ):
         """
         Parse header and data from the given byte string,
         return an object of type Packet
         """
+        cls.BYTES_IN_PAYLOAD = BYTES_IN_PAYLOAD
+        cls.BYTES_IN_PACKET = cls.BYTES_IN_PAYLOAD + cls.BYTES_IN_HEADER
+        
         # check correct size packet
         len_bytes = len(bytestr)
         if not len_bytes == cls.BYTES_IN_PACKET:
