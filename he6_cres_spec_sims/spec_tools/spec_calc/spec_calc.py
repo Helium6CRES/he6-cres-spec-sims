@@ -633,7 +633,7 @@ def anharmonic_sideband_calc(energy, center_pitch_angle, rho, avg_cycl_freq, axi
     vz = sol[1]
 
     sidebands =  FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_profile, magnetic_modulation, nHarmonics)
-    return format_sideband_array(sidebands, avg_cycl_freq, axial_freq, np.nan, num_sidebands = 7)
+    return format_sideband_array(sidebands, avg_cycl_freq, axial_freq, np.nan, num_sidebands)
 
 
 def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zmax, trap_profile, nHarmonics):
@@ -684,18 +684,18 @@ def instantaneous_frequency(energy, rho, avg_cycl_freq, vz, z=None, trap_profile
 def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_profile, magnetic_modulation, nHarmonics=128):
     """  Computes sideband amplitudes as a function of axial trajectory, magnetic field profile. Returns list with sidebands
     """
-        ### Convert particle trajectory to instantaneous radiated frequency (Doppler + B-field)
-        dt = 1./ (nHarmonics * axial_freq)
+    ### Convert particle trajectory to instantaneous radiated frequency (Doppler + B-field)
+    dt = 1./ (nHarmonics * axial_freq)
 
-        omega_c = instantaneous_frequency(energy, rho, avg_cycl_freq, vz, z, trap_profile, magnetic_modulation)
-        omega_c -= np.mean(omega_c)
-        Phi = np.cumsum(omega_c) * dt
-        expPhi = np.exp(1j * Phi)
-        yf = np.abs(fft(expPhi,norm="forward"))
-        yf = yf[:nHarmonics//2]
-        return yf
+    omega_c = instantaneous_frequency(energy, rho, avg_cycl_freq, vz, z, trap_profile, magnetic_modulation)
+    omega_c -= np.mean(omega_c)
+    Phi = np.cumsum(omega_c) * dt
+    expPhi = np.exp(1j * Phi)
+    yf = np.abs(fft(expPhi,norm="forward"))
+    yf = yf[:nHarmonics//2]
+    return yf
 
-def format_sideband_array(sidebands_one, avg_cyc_freq, axial_freq, mod_index=np.nan, num_sidebands = 7)
+def format_sideband_array(sidebands_one, avg_cyc_freq, axial_freq, mod_index=np.nan, num_sidebands = 7):
     """ Does formatting for array with list of sideband magnitudes (normalized), and their start frequencies. 
         Takes in 1-sided list of sideband magnitudes
     """
@@ -703,7 +703,7 @@ def format_sideband_array(sidebands_one, avg_cyc_freq, axial_freq, mod_index=np.
     sidebands = []
 
     for k in range(-num_sidebands, num_sidebands + 1):
-        freq = avg_cycl_freq + k * axial_freq
+        freq = avg_cyc_freq + k * axial_freq
         magnitude = sidebands_one[abs(k)]
         pair = (freq, magnitude)
         sidebands.append(pair)
