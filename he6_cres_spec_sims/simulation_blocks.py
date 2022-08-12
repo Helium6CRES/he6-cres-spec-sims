@@ -630,9 +630,12 @@ class BandBuilder:
 
             if harmonic_sidebands:
                 sideband_amplitudes = sc.sideband_calc(
+                    row["energy"],
+                    row["rho_center"],
                     row["avg_cycl_freq"],
                     row["axial_freq"],
                     row["zmax"],
+                    self.config.trap_profile,
                     magnetic_modulation=magnetic_modulation,
                     num_sidebands=sideband_num,
                 )[0]
