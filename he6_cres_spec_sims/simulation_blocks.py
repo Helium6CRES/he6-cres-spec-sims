@@ -616,6 +616,7 @@ class BandBuilder:
 
         print("~~~~~~~~~~~~BandBuilder Block~~~~~~~~~~~~~~\n")
         sideband_num = self.config.bandbuilder.sideband_num
+        magnetic_modulation = self.config.bandbuilder.magnetic_modulation
         harmonic_sidebands = self.config.bandbuilder.harmonic_sidebands
 
         frac_total_segment_power_cut = (
@@ -629,9 +630,13 @@ class BandBuilder:
 
             if harmonic_sidebands:
                 sideband_amplitudes = sc.sideband_calc(
+                    row["energy"],
+                    row["rho_center"],
                     row["avg_cycl_freq"],
                     row["axial_freq"],
                     row["zmax"],
+                    self.config.trap_profile,
+                    magnetic_modulation=magnetic_modulation,
                     num_sidebands=sideband_num,
                 )[0]
             else:
@@ -643,6 +648,7 @@ class BandBuilder:
                     row["axial_freq"],
                     row["zmax"],
                     self.config.trap_profile,
+                    magnetic_modulation=magnetic_modulation,
                     num_sidebands=sideband_num,
                 )[0]
 
