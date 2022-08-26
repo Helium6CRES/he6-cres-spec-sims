@@ -690,6 +690,7 @@ class TrackBuilder:
         trapped_event_start_times = np.random.uniform(0, run_length, events_simulated)
 
         # iterate through the segment zeros and fill in start times.
+        # TODO: Add in a file num here. 
 
         for index, row in bands_df[bands_df["segment_num"] == 0.0].iterrows():
             #             print(index)
@@ -981,7 +982,8 @@ class Daq:
 
 class SpecBuilder:
     """TODO:Document
-        TODO: This doesn't need the extra config path argument. It's ugly and """
+        TODO: This doesn't need the extra config path argument. It's ugly and you can 
+        just use config.config_path instead."""
 
     def __init__(self, config, config_path):
 
