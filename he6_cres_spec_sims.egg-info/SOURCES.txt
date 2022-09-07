@@ -2,6 +2,7 @@ MANIFEST.in
 README.md
 setup.py
 he6_cres_spec_sims/__init__.py
+he6_cres_spec_sims/experiment.py
 he6_cres_spec_sims/simulation.py
 he6_cres_spec_sims/simulation_blocks.py
 he6_cres_spec_sims.egg-info/PKG-INFO
@@ -17,6 +18,9 @@ he6_cres_spec_sims/daq/gain_noise_measurements/noise.csv
 he6_cres_spec_sims/spec_tools/__init__.py
 he6_cres_spec_sims/spec_tools/load_field_profile.py
 he6_cres_spec_sims/spec_tools/trap_field_profile.py
+he6_cres_spec_sims/spec_tools/beta_source/__init__.py
+he6_cres_spec_sims/spec_tools/beta_source/beta_source.py
+he6_cres_spec_sims/spec_tools/beta_source/beta_spectrum.py
 he6_cres_spec_sims/spec_tools/creating_trap_geometries/__init__.py
 he6_cres_spec_sims/spec_tools/creating_trap_geometries/load_default_field_profiles.py
 he6_cres_spec_sims/spec_tools/creating_trap_geometries/load_field_profile.py

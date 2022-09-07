@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="he6_cres_spec_sims",
-    version="0.1.4",
+    version="0.1.5",
     description="A package for simulating cres data.",
     url="https://github.com/drewbyron/he6-cres-spec-sims",
     author="William (Drew) Byron",
