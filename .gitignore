@@ -1,2 +1,13 @@
+<<<<<<< HEAD
 *.csv
 *.spec
+=======
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyc
+
+# MacOS generated files #
+######################
+.DS_Store
+>>>>>>> feature/anharmonic
