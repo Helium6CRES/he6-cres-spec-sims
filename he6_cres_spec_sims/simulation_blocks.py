@@ -118,7 +118,7 @@ class Config:
         Loads the field profile.
     """
 
-    def __init__(self, config_path):
+    def __init__(self, config_path, load_field = True, daq_only = False):
         """
         Parameters
         ----------
@@ -126,9 +126,16 @@ class Config:
             The name of the config file contained in the
             he6_cres_spec_sims/config_files directory.
         """
-        self.config_path = config_path
+
+        # Attributes: 
+        self.config_path = pathlib.Path(config_path)
+        self.load_field = load_field
+        self.daq_only = daq_only
+        
+
         self.load_config_file()
-        self.load_field_profile()
+        if self.load_field: 
+            self.load_field_profile()
 
     def load_config_file(self):
         """Loads the YAML config file and creates attributes associated
@@ -150,16 +157,20 @@ class Config:
             with open(self.config_path, "r") as read_file:
                 config_dict = yaml.load(read_file, Loader=yaml.FullLoader)
 
-                # Take config parameters from config_file.
-                self.settings = DotDict(config_dict["Settings"])
-                self.physics = DotDict(config_dict["Physics"])
-                self.eventbuilder = DotDict(config_dict["EventBuilder"])
-                self.segmentbuilder = DotDict(config_dict["SegmentBuilder"])
-                self.bandbuilder = DotDict(config_dict["BandBuilder"])
-                self.trackbuilder = DotDict(config_dict["TrackBuilder"])
-                self.downmixer = DotDict(config_dict["DMTrackBuilder"])
-                self.daq = DotDict(config_dict["Daq"])
-                self.specbuilder = DotDict(config_dict["SpecBuilder"])
+                if self.daq_only: 
+                    self.daq = DotDict(config_dict["Daq"])
+
+                else:
+                    # Take config parameters from config_file.
+                    self.settings = DotDict(config_dict["Settings"])
+                    self.physics = DotDict(config_dict["Physics"])
+                    self.eventbuilder = DotDict(config_dict["EventBuilder"])
+                    self.segmentbuilder = DotDict(config_dict["SegmentBuilder"])
+                    self.bandbuilder = DotDict(config_dict["BandBuilder"])
+                    self.trackbuilder = DotDict(config_dict["TrackBuilder"])
+                    self.downmixer = DotDict(config_dict["DMTrackBuilder"])
+                    self.daq = DotDict(config_dict["Daq"])
+                    self.specbuilder = DotDict(config_dict["SpecBuilder"])
 
         except Exception as e:
             print("Config file failed to load.")
@@ -184,8 +195,6 @@ class Config:
         try:
             main_field = self.eventbuilder.main_field
             trap_current = self.eventbuilder.trap_current
-            # self.trap_profile = load_he6_trap(main_field, trap_current)
-            # self.field_strength = self.trap_profile.field_strength_interp
 
             self.trap_profile = TrapFieldProfile(main_field, trap_current)
             self.field_strength = self.trap_profile.field_strength
@@ -840,9 +849,11 @@ class DAQ:
 
         # TODO: Change this hardcoded path. Also need to allow this csv to live in the github repo.
         # TODO: I need to add U, I side noise and gain to this csv...
-        self.gain_noise_csv_path = "/home/drew/He6CRES/he6-cres-daq-intuition/gain_noise/gain_noise_2^12_08042022.csv"
+        # 10/3/22. Editing the below to take a config argument. 
+        # self.gain_noise_csv_path = self.config.daq.gain_noise_cvs_path
+        # self.gain_noise_csv_path = "/home/drew/He6CRES/he6-cres-daq-intuition/gain_noise/gain_noise_2^12_08042022.csv"
 
-        self.gain_noise = pd.read_csv(self.gain_noise_csv_path)
+        self.gain_noise = pd.read_csv(self.config.daq.gain_noise_cvs_path)
 
         # Divide the noise_mean_func by the roach_avg.
         # Need to add in U vs I side here.
@@ -978,7 +989,6 @@ class DAQ:
         ) * (slice_start - time_start)
 
         # shape of signal_alive_condition: (num_tracks, num_slices).
-        # TODO: DO I NEED A FILE ACQ condition here?
         signal_alive_condition = (
             (file_in_acq_array == file_in_acq)
             & (time_start <= slice_start)
@@ -1018,8 +1028,12 @@ class DAQ:
 
             for i, alive_track_fft in enumerate(fft):
 
-                # How to create this mask is a bit tricky. Not sure what it should be
-                mask = alive_track_fft > alive_track_fft.max() / 5
+                # How to create this mask is a bit tricky. Not sure what factor to use.
+                # This is harder than expected due to the natural fluctuations in bin power. 
+                # I'm not getting continuous masks. One idea is to make the mask condition column-wise...
+                # Needs to be the magnitude!! Ok. 
+                # Keep the axis =0 max because this makes the labels robust against SNR fluctuations across the track.
+                mask = (np.abs(alive_track_fft) ** 2) > (np.abs(alive_track_fft) ** 2).max(axis = 0) / 10
 
                 target[mask] = labels[condition][i]
 
