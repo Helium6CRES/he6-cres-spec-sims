@@ -847,13 +847,8 @@ class DAQ:
         # Get date for building out spec file paths.
         self.date = pd.to_datetime("today").strftime("%Y-%m-%d-%H-%M-%S")
 
-        # TODO: Change this hardcoded path. Also need to allow this csv to live in the github repo.
-        # TODO: I need to add U, I side noise and gain to this csv...
-        # 10/3/22. Editing the below to take a config argument. 
-        # self.gain_noise_csv_path = self.config.daq.gain_noise_cvs_path
-        # self.gain_noise_csv_path = "/home/drew/He6CRES/he6-cres-daq-intuition/gain_noise/gain_noise_2^12_08042022.csv"
-
-        self.gain_noise = pd.read_csv(self.config.daq.gain_noise_cvs_path)
+        # Grab the gain_noise csv. TODO: Document what this needs to look like. 
+        self.gain_noise = pd.read_csv(self.config.daq.gain_noise_csv_path)
 
         # Divide the noise_mean_func by the roach_avg.
         # Need to add in U vs I side here.
@@ -1056,7 +1051,7 @@ class DAQ:
 
         # Average time slices and transpose the signal array so that it's shape is (slice, freq_bins)
         signal_array = self.roach_slice_avg(signal_array.T, N=self.config.daq.roach_avg)
-        print(signal_array.shape)
+
         return signal_array
 
     def write_to_spec(self, spec_array, spec_file_path):
