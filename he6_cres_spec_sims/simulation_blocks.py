@@ -842,8 +842,6 @@ class DAQ:
         )
         # This block size is used to create chunks of spec file that don't overhwelm the ram.
         self.slice_block = int(50 * 32768 / config.daq.freq_bins)
-        # TODO: DELETE ONCE THIS WORKS
-        self.slice_block = 10
 
         # Get date for building out spec file paths.
         self.date = pd.to_datetime("today").strftime("%Y-%m-%d-%H-%M-%S")
@@ -874,7 +872,7 @@ class DAQ:
         self.build_spec_file_paths()
         self.build_empty_spec_files()
 
-        # Define a random phase for each band. 
+        # Define a random phase for each band.
         self.phase = self.rng.random(size=len(self.tracks))
 
         if self.config.daq.build_labels:
@@ -978,9 +976,7 @@ class DAQ:
 
         # Reshape the random phase assigned to each band.
         band_phase = np.repeat(
-            np.expand_dims(
-                self.phase, axis=1
-            ),
+            np.expand_dims(self.phase, axis=1),
             num_slices,
             axis=1,
         )
@@ -1027,7 +1023,8 @@ class DAQ:
                 freq_start[condition, :]
                 + slope[condition, :] / 2 * (t - time_start[condition, :])
             )
-            * (2 * np.pi * ((t - time_start[condition, :]))) + (2*np.pi*band_phase[condition, :])
+            * (2 * np.pi * ((t - time_start[condition, :])))
+            + (2 * np.pi * band_phase[condition, :])
         )
 
         if self.config.daq.build_labels:
