@@ -927,7 +927,7 @@ class DAQ:
 
     def build_signal_chunk(self, file_in_acq, start_slice, stop_slice):
 
-        print(f"file ={file_in_acq}, slices = [{start_slice}:{stop_slice}]")
+        print(f"file = {file_in_acq}, slices = [{start_slice}:{stop_slice}]")
         ith_slice = np.arange(
             start_slice * self.config.daq.roach_avg,
             stop_slice * self.config.daq.roach_avg,
