@@ -118,7 +118,7 @@ class Config:
         Loads the field profile.
     """
 
-    def __init__(self, config_path, load_field = True, daq_only = False):
+    def __init__(self, config_path, load_field=True, daq_only=False):
         """
         Parameters
         ----------
@@ -127,14 +127,13 @@ class Config:
             he6_cres_spec_sims/config_files directory.
         """
 
-        # Attributes: 
+        # Attributes:
         self.config_path = pathlib.Path(config_path)
         self.load_field = load_field
         self.daq_only = daq_only
-        
 
         self.load_config_file()
-        if self.load_field: 
+        if self.load_field:
             self.load_field_profile()
 
     def load_config_file(self):
@@ -157,7 +156,7 @@ class Config:
             with open(self.config_path, "r") as read_file:
                 config_dict = yaml.load(read_file, Loader=yaml.FullLoader)
 
-                if self.daq_only: 
+                if self.daq_only:
                     self.daq = DotDict(config_dict["Daq"])
 
                 else:
@@ -843,11 +842,13 @@ class DAQ:
         )
         # This block size is used to create chunks of spec file that don't overhwelm the ram.
         self.slice_block = int(50 * 32768 / config.daq.freq_bins)
+        # TODO: DELETE ONCE THIS WORKS
+        self.slice_block = 10
 
         # Get date for building out spec file paths.
         self.date = pd.to_datetime("today").strftime("%Y-%m-%d-%H-%M-%S")
 
-        # Grab the gain_noise csv. TODO: Document what this needs to look like. 
+        # Grab the gain_noise csv. TODO: Document what this needs to look like.
         self.gain_noise = pd.read_csv(self.config.daq.gain_noise_csv_path)
 
         # Divide the noise_mean_func by the roach_avg.
@@ -872,6 +873,9 @@ class DAQ:
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
         self.build_spec_file_paths()
         self.build_empty_spec_files()
+
+        # Define a random phase for each band. 
+        self.phase = self.rng.random(size=len(self.tracks))
 
         if self.config.daq.build_labels:
             self.build_label_file_paths()
@@ -925,6 +929,7 @@ class DAQ:
 
     def build_signal_chunk(self, file_in_acq, start_slice, stop_slice):
 
+        print(f"file ={file_in_acq}, slices = [{start_slice}:{stop_slice}]")
         ith_slice = np.arange(
             start_slice * self.config.daq.roach_avg,
             stop_slice * self.config.daq.roach_avg,
@@ -962,14 +967,20 @@ class DAQ:
             num_slices,
             axis=1,
         )
-        freq_stop = np.repeat(
-            np.expand_dims(self.tracks.freq_stop.to_numpy(), axis=1), num_slices, axis=1
-        )
         slope = np.repeat(
             np.expand_dims(self.tracks.slope.to_numpy(), axis=1), num_slices, axis=1
         )
         file_in_acq_array = np.repeat(
             np.expand_dims(self.tracks.file_in_acq.to_numpy(), axis=1),
+            num_slices,
+            axis=1,
+        )
+
+        # Reshape the random phase assigned to each band.
+        band_phase = np.repeat(
+            np.expand_dims(
+                self.phase, axis=1
+            ),
             num_slices,
             axis=1,
         )
@@ -983,13 +994,19 @@ class DAQ:
             time_stop - time_start
         ) * (slice_start - time_start)
 
+        # Caluculate max frequency within the signal in order to impose the LPF.
+        freq_curr = freq_start + slope * (slice_stop - time_start)
+
         # shape of signal_alive_condition: (num_tracks, num_slices).
+        # This condition is what imposes the LPF at the top of the freq bandwidth.
         signal_alive_condition = (
             (file_in_acq_array == file_in_acq)
             & (time_start <= slice_start)
             & (time_stop >= slice_stop)
+            & (freq_curr <= self.config.daq.freq_bw)
         )
 
+        # print(freq_curr[signal_alive_condition])
         # Setting all "dead" tracks to zero power.
         band_powers[~signal_alive_condition] = 0
 
@@ -1003,8 +1020,14 @@ class DAQ:
         # The below is the most time consuming operation and the array is very memory intensive.
         # What is happening is that the time domain signals for all slices in this block for each alive signal are made simultaneously
         # and then the signals are summed along axis =1 (track axis).
+        # The factor of 2 is needed because the instantaeous frequency is the derivative
+        # of the phase. The band_phase is a random phase assigned to each band.
         signal_time_series = voltage[condition, :] * np.sin(
-            (freq_start[condition, :] + slope[condition, :] * t) * (2 * np.pi * t)
+            (
+                freq_start[condition, :]
+                + slope[condition, :] / 2 * (t - time_start[condition, :])
+            )
+            * (2 * np.pi * ((t - time_start[condition, :]))) + (2*np.pi*band_phase[condition, :])
         )
 
         if self.config.daq.build_labels:
@@ -1024,11 +1047,13 @@ class DAQ:
             for i, alive_track_fft in enumerate(fft):
 
                 # How to create this mask is a bit tricky. Not sure what factor to use.
-                # This is harder than expected due to the natural fluctuations in bin power. 
+                # This is harder than expected due to the natural fluctuations in bin power.
                 # I'm not getting continuous masks. One idea is to make the mask condition column-wise...
-                # Needs to be the magnitude!! Ok. 
+                # Needs to be the magnitude!! Ok.
                 # Keep the axis =0 max because this makes the labels robust against SNR fluctuations across the track.
-                mask = (np.abs(alive_track_fft) ** 2) > (np.abs(alive_track_fft) ** 2).max(axis = 0) / 10
+                mask = (np.abs(alive_track_fft) ** 2) > (
+                    np.abs(alive_track_fft) ** 2
+                ).max(axis=0) / 10
 
                 target[mask] = labels[condition][i]
 
@@ -1059,7 +1084,7 @@ class DAQ:
         Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
         worth of data.
         """
-        print("Writing to file path: {}\n".format(spec_file_path))
+        # print("Writing to file path: {}\n".format(spec_file_path))
 
         # Make spec file:
         slices_in_spec, freq_bins_in_spec = spec_array.shape
