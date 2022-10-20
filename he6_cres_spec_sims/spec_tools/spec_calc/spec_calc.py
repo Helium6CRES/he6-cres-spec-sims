@@ -724,3 +724,13 @@ def power_larmor(field, frequency):
     )
 
     return power_larmor
+
+def relative_power_slope(slope):
+    """
+        Returns relative power [0-1] in Fourier bin as a function of slope. As slope increases, power in main bin
+        goes to zero. Untested for different data schemes (e.g. bitcodes/ averaeging)
+    """
+    alpha = 2*np.pi*slope
+    T = 2**13 / 2400e6 * 2
+    x = np.sqrt( alpha * T**2 / np.pi)
+    return ss.erf(x**2/np.sqrt(2)) / x**2 * np.sqrt(np.pi / 2.)
