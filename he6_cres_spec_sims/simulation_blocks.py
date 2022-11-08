@@ -563,9 +563,6 @@ class SegmentBuilder:
         axial_freq = sc.axial_freq(
             df["energy"], df["center_theta"], df["rho_center"], trap_profile
         )
-        # avg_cycl_freq = sc.avg_cycl_freq(
-        #     df["energy"], df["center_theta"], df["rho_center"], trap_profile
-        # )
 
         # TODO: Make this more accurate as per discussion with RJ.
         b_avg = sc.b_avg(
@@ -577,7 +574,7 @@ class SegmentBuilder:
             df["energy"], df["center_theta"], df["rho_center"], trap_profile
         )
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
-        segment_radiated_power = (
+        segment_radiated_power_te11 = (
             pc.power_calc(
                 df["center_x"],
                 df["center_y"],
@@ -587,19 +584,22 @@ class SegmentBuilder:
             )
             * 2
         )
-        slope = sc.df_dt(
-            df["energy"], self.config.eventbuilder.main_field, segment_radiated_power
-        )
+
+        segment_radiated_power_tot = sc.power_larmor(main_field, avg_cycl_freq)
+
+        # slope = sc.df_dt(
+        #     df["energy"], self.config.eventbuilder.main_field, segment_radiated_power
+        # )
 
         energy_stop = (
-            df["energy"] - segment_radiated_power * df["segment_length"] * J_TO_EV
+            df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
         )
         freq_stop = sc.avg_cycl_freq(
             energy_stop, df["center_theta"], df["rho_center"], trap_profile
         )
         slope = (freq_stop - avg_cycl_freq) / df["segment_length"]
 
-        segment_power = segment_radiated_power / 2
+        segment_power = segment_radiated_power_te11 / 2
 
         df["axial_freq"] = axial_freq
         df["avg_cycl_freq"] = avg_cycl_freq
