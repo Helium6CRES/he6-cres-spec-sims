@@ -3,11 +3,11 @@ import json
 import sys
 import argparse
 
-# Path to local imports.
-sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
+# # Path to local imports.
+# sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
 
 # Local imports.
-import he6_cres_spec_sims.rocks_experiment as exp
+import .rocks_experiment as exp
 
 def main():
     """
