@@ -7,7 +7,7 @@ import argparse
 # sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
 
 # Local imports.
-import .rocks_experiment as exp
+import rocks_experiment as exp
 
 def main():
     """

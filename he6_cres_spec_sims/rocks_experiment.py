@@ -10,8 +10,8 @@ from typing import List
 import yaml
 import subprocess as sp
 
-from . import simulation as sim
-from .simulation_blocks import Config
+import simulation as sim
+from simulation_blocks import Config
 import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 
