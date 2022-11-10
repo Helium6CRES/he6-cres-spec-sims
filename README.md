@@ -24,6 +24,16 @@ A package for simulating cres data.
 		* There is an example config file in the `he6-cres-spec-sims` repo under `config_files`. Copy that over under the experiments dir because the results will be written in the same directory that the config file you point to is. 
 
 * Step 1: 
+	* 11/10/22: 
+		* Working through this. Trying to make a simulation call an executable so that I can submit it as a job. This means the permissions have to be right. Make something an executable with this: 
+			* `sudo chmod +x filename.py`
+		* Trying to get the rocks experiment working here locally before porting it onto rocks. If this works I should be somewhat close. Maybe. 
+		* Ok this seems to be working now. Nice. Next step is to get the qsub job submission working on rocks. Then need to think about how to clean up things if chunking up even further.  
+			* This command works locally: 
+				* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/experiments/test_experiment_11082022.txt"`
+		* Trying the following command on rocks: 
+			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.txt"`
+
 	* It's working on a single node. 
 	* Work on an run_experiment_rocks.py (rename other one) file to send out a bunch of different jobs to different nodes. One field per node.
 	* Make logging output sensible with timestamps.
@@ -31,7 +41,6 @@ A package for simulating cres data.
 	* do we need a clean-up?
 * Step 2: 
 	* How to chunk this up? Just run a few different experiments with different names ("\_0") and then write a clean-up script to combine them all into one. 
-
 
 
 ## Random Useful: 
@@ -44,5 +53,6 @@ A package for simulating cres data.
 
 * Get the output to be a bit cleaner. Right now it gives 5 different csvs but really the dmtracks contains all the info doesn't it?
 * Enable chunking up of different fields.
+* Want to have clear instructions for running an experiment locally and running an experiment on rocks. And for how to analyze the results. 
 
 ## Done List: 
