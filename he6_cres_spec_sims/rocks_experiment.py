@@ -171,7 +171,7 @@ class RocksExperiment:
         """
         DOCUMENT.
         """
-        experiment_name = self.experiment_params.experiment_name
+        experiment_name = self.experiment_params["experiment_name"]
 
         qsub_opts = [
             "-S /bin/bash",  # use bash
