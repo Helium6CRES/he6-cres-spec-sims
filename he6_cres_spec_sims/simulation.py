@@ -31,6 +31,7 @@ import os
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 from he6_cres_spec_sims import simulation_blocks as sim_blocks
@@ -112,6 +113,7 @@ class Results:
         }
 
         # First make a results_dir with the same name as the config.
+        config_path = Path(config_path)
         config_name = config_path.stem
         parent_dir = config_path.parents[0]
         results_dir = parent_dir / config_name

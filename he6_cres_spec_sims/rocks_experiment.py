@@ -8,12 +8,13 @@ from shutil import rmtree
 import typing
 from typing import List
 import yaml
+import subprocess as sp
 
 from . import simulation as sim
 from .simulation_blocks import Config
-# from .spec_tools import beta_source as source
 import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> pathlib.Path:
@@ -54,7 +55,7 @@ def get_config_paths(experiment_params: dict) -> List[pathlib.Path]:
     return config_paths
 
 
-class Experiment:
+class RocksExperiment:
     def __init__(self, experiment_params: dict) -> None:
 
         self.experiment_params = experiment_params
@@ -149,10 +150,46 @@ class Experiment:
 
         for i, config_path in enumerate(config_paths):
             print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
-            print("Running simulation {} / {}\n\n".format(i, len(config_paths)))
+            print("Submitting qsub job for simulation {} / {}\n\n".format(i, len(config_paths)))
             print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-            simulation = sim.Simulation(config_path)
-            simulation.run_full()
+            
+            ## Ok so this step needs to be replaced by a qsub call which means there needs 
+            # to be a way to run a simulation from the command line. This should be doable. 
+            # Building a run_simulation.py for this purpose. 
+            # First just getting this to run as an executable locally then I'll work on 
+            # getting it to work as a qsub. Note that this hardcoded path is a bit annoying. 
+            cmd = 'python3 ./run_simulation.py -scp "{}"'.format(config_path)
+            self.qsub_job(cmd = cmd, sim_number = i)
+            # sp.run(cmd, shell=True)
+            # simulation = sim.Simulation(config_path)
+
+            # simulation.run_full()
+
+        return None
+
+    def qsub_job(self, cmd, sim_number):
+        """
+        DOCUMENT.
+        """
+        experiment_name = self.experiment_params.experiment_name
+
+        qsub_opts = [
+            "-S /bin/bash",  # use bash
+            "-cwd",  # run from current working directory
+            "-m n",  # don't send email notifications
+            "-w e",  # verify syntax
+            "-V",  # inherit environment variables
+            f"-N {experiment_name}_sim_{sim_number}",  # job name
+            f"-l h_rt={tlim}",  # time limit
+            "-q all.q",  # queue name (cenpa only uses one queue)
+            "-j yes",  # join stderr and stdout
+            "-b y",  # Look for series of bytes.
+            f"-o /data/eliza4/he6_cres/simulation/sim_logs/{experiment_name}_sim_{sim_number}.txt",
+        ]
+        qsub_str = " ".join([str(s) for s in qsub_opts])
+        batch_cmd = "qsub {} {}".format(qsub_str, cmd)
+
+        sp.run(batch_cmd, shell=True)
 
         return None
 
