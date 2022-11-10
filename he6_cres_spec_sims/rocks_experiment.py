@@ -158,7 +158,7 @@ class RocksExperiment:
             # Building a run_simulation.py for this purpose. 
             # First just getting this to run as an executable locally then I'll work on 
             # getting it to work as a qsub. Note that this hardcoded path is a bit annoying. 
-            cmd = 'python3 ./run_simulation.py -scp "{}"'.format(config_path)
+            cmd = 'python3 /data/eliza4/he6_cres/simulation/he6-cres-spec-sims/he6_cres_spec_sims/run_simulation.py -scp "{}"'.format(config_path)
             self.qsub_job(cmd = cmd, sim_number = i)
             # sp.run(cmd, shell=True)
             # simulation = sim.Simulation(config_path)
