@@ -254,7 +254,9 @@ class EventBuilder:
         if betas_to_simulate == -1:
             betas_to_simulate = np.inf
 
-        print(f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
+        print(
+            f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}"
+        )
 
         while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
 
@@ -265,9 +267,13 @@ class EventBuilder:
 
             while not is_trapped and beta_num < betas_to_simulate:
 
-                if beta_num%250 ==0: 
-                    print(f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
-                    print(f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
+                if beta_num % 250 == 0:
+                    print(
+                        f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas."
+                    )
+                    print(
+                        f"\nEvents: {event_num}/{events_to_simulate-1} trapped events."
+                    )
 
                 # Does this miss some betas??? Be sure it doesn't.
                 beta_num += 1

@@ -70,6 +70,13 @@ A package for simulating cres data.
 	* Maybe just rerun everything as is then put a sim_index col when combining everything? That may be easier to impliment and keep track of in the immediate. 
 	* Make the .txt into a json? That may be easier for people to understand the format of in terms of it being a dictionary? 
 	* Should I add a date in the logs somewhere? Or even in the name of the experiment?
+	* Get rid of sim_ in the rocks dictionaries as this is redundant and makes navigation harder. 
+	* Maybe a directory should be made for all the logs associated with a given experiment, this would be better I think. 
+
+	* AFTER BREAKFAST: 
+		* First get cleanup working to first order.
+		* Why are print statements in the logs not matching my new code? May need to hard reset the remote?
+		* Get things working to first order by the end of the next block. Keep with the 45 minute chunks. 
 
 
 ## Done List: 
