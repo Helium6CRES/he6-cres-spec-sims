@@ -50,15 +50,12 @@ def run_experiment(dict_path):
     # Load the .json file into a dictionary.
     sim_experiment_params = json.load(open(dict_path))
 
-    default_exp_copies = 1
-    exp_copies = sim_experiment_params.pop("experiment_copies", 1)
+    exp_copies_dirs = get_exp_dirs(dict_path)
 
     # Make the experiment name match the name of the .json file.
-    for copy in range(exp_copies):
-        if copy == 0: 
-            experiment_name = Path(dict_path).stem 
-        else: 
-            experiment_name = Path(dict_path).stem + f"_{copy}"
+    for copy, exp_dir in enumerate(exp_copies_dirs):
+
+        experiment_name = exp_dir.stem 
 
         sim_experiment_params["experiment_name"] = experiment_name
 
