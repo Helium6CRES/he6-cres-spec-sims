@@ -27,7 +27,7 @@ class BetaSource:
         """
         self.config = config
         self.source = self.config.physics.energy_spectrum
-        self.energy_array_len = 10**6
+        self.energy_array_len = 10**6 + 100 # Just making this bigger than the sim size.
         self.energy_array = None
 
         # Include all the sources here.

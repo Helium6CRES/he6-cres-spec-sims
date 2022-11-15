@@ -24,6 +24,14 @@ A package for simulating cres data.
 		* There is an example config file in the `he6-cres-spec-sims` repo under `config_files`. Copy that over under the experiments dir because the results will be written in the same directory that the config file you point to is. 
 
 * Step 1: 
+	* Getting each field sent to a different node. 
+	* THIS WORKS ON TO STEP 2
+	* `cd /data/eliza4/he6_cres/simulation`
+	* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.txt"`
+
+* Step 2: 
+	* Simplest way to further parrelelize the simulations. Just call the simulation config again and again? How would that work?
+
 	* 11/10/22: 
 		* Working through this. Trying to make a simulation call an executable so that I can submit it as a job. This means the permissions have to be right. Make something an executable with this: 
 			* `sudo chmod +x filename.py`
@@ -54,5 +62,10 @@ A package for simulating cres data.
 * Get the output to be a bit cleaner. Right now it gives 5 different csvs but really the dmtracks contains all the info doesn't it?
 * Enable chunking up of different fields.
 * Want to have clear instructions for running an experiment locally and running an experiment on rocks. And for how to analyze the results. 
+* The name of the experiment doesn't match the name of the .txt which is a little annoying. Should make that the way it works. (on rocks)
+* The output to the log will be too damn much rn. Need an option to run in debug mode or something?
+
 
 ## Done List: 
+
+* Get field 
