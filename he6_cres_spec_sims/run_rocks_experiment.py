@@ -172,6 +172,10 @@ def merge_csvs(exp_copies_dirs):
         tracks_dfs = [
             pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
         ]
+        
+        # Add in the copy index. 
+        for copy in range(len(tracks_dfs)):
+            tracks_df[copy]["exp_copy"] = copy
 
         tracks_df = pd.concat(tracks_dfs, ignore_index=True)
 
@@ -182,11 +186,11 @@ def merge_csvs(exp_copies_dirs):
 
         lens = [len(df) for df in tracks_dfs]
         print("\nCombining set of tracks_dfs.\n")
-        print("lengths: ", lens)
-        print("sum: ", sum(lens))
-        print("len single file (sanity check): ", len(tracks_df))
-        print("tracks index: ", tracks_df.index)
-        print("tracks cols: ", tracks_df.columns)
+        print("\nlengths: ", lens)
+        print("\nsum: ", sum(lens))
+        print("\nlen single file (sanity check): ", len(tracks_df))
+        print("\ntracks index: ", tracks_df.index)
+        print("\ntracks cols: ", tracks_df.columns)
 
     # print("this:/n", zip(*tracks_paths_lists))
 
