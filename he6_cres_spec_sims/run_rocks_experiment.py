@@ -159,9 +159,13 @@ def merge_csvs(exp_copies_dirs):
     # Make the output only tracks?? Yes, for now.
 
     # Step 0:  Make a list of lists that is the
-
+    tracks_paths_lists = []
     for exp_dir in exp_copies_dirs:
-        print(list(exp_dir.glob("*/dmtracks.csv")))
+        tracks_paths_lists.append(sorted(list(exp_dir.glob("*/dmtracks.csv"))))
+
+    print("this:/n", zip(*tracks_paths_lists))
+
+
     # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
     # tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
     # tracks_exist = [path.is_file() for path in tracks_path_list]
