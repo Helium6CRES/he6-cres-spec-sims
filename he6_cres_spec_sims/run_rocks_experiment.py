@@ -167,15 +167,16 @@ def merge_csvs(exp_copies_dirs):
             sorted(list(exp_dir.glob(f"*/{tracks_name_in_sim}.csv")))
         )
 
+    # QUESTION: Will this clean-up break with large csvs? 
     for tracks_path_list in list(zip(*tracks_paths_lists)):
         print(len(tracks_path_list))
         tracks_dfs = [
             pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
         ]
-        
+
         # Add in the copy index. 
         for copy in range(len(tracks_dfs)):
-            tracks_df[copy]["exp_copy"] = copy
+            tracks_dfs[copy]["exp_copy"] = copy
 
         tracks_df = pd.concat(tracks_dfs, ignore_index=True)
 
