@@ -57,7 +57,6 @@ class Simulation:
         daq = sim_blocks.Daq(self.config)
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
-
         events = eventbuilder.run()
         segments = segmentbuilder.run(events)
         bands = bandbuilder.run(segments)

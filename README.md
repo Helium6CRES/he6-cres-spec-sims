@@ -60,10 +60,16 @@ A package for simulating cres data.
 ## To Do List: 
 
 * Get the output to be a bit cleaner. Right now it gives 5 different csvs but really the dmtracks contains all the info doesn't it?
-* Enable chunking up of different fields.
 * Want to have clear instructions for running an experiment locally and running an experiment on rocks. And for how to analyze the results. 
 * The name of the experiment doesn't match the name of the .txt which is a little annoying. Should make that the way it works. (on rocks)
 * The output to the log will be too damn much rn. Need an option to run in debug mode or something?
+
+* 11/15/22: 
+	* Error when running 1e6 betas. 
+		* return self.bs.energy_array[beta_num]IndexError: index 1000000 is out of bounds for axis 0 with size 1000000.
+	* Maybe just rerun everything as is then put a sim_index col when combining everything? That may be easier to impliment and keep track of in the immediate. 
+	* Make the .txt into a json? That may be easier for people to understand the format of in terms of it being a dictionary? 
+	* Should I add a date in the logs somewhere? Or even in the name of the experiment?
 
 
 ## Done List: 

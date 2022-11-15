@@ -172,7 +172,7 @@ class RocksExperiment:
         DOCUMENT.
         """
         experiment_name = self.experiment_params["experiment_name"]
-        print(experiment_name)
+        
         # Could make following a command line argument. 
         tlim = "12:00:00"
 
