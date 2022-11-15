@@ -97,7 +97,7 @@ def clean_up_experiment(dict_path):
     # Merge track csvs into exp_dir.
     if len(exp_copies_dirs) > 1:
         merge_csvs(exp_copies_dirs)
-        # del_dirs(exp_copies_dirs[1:])
+        del_dirs(exp_copies_dirs[1:])
     else:
         print("No clean-up necessary, only one copy was created.")
 
@@ -160,9 +160,12 @@ def merge_csvs(exp_copies_dirs):
     # Make the output only tracks?? Yes, for now.
 
     # Step 0:  Gather all relevant paths.
+    tracks_name_in_sim = "dmtracks"
     tracks_paths_lists = []
     for exp_dir in exp_copies_dirs:
-        tracks_paths_lists.append(sorted(list(exp_dir.glob("*/dmtracks.csv"))))
+        tracks_paths_lists.append(
+            sorted(list(exp_dir.glob(f"*/{tracks_name_in_sim}.csv")))
+        )
 
     for tracks_path_list in list(zip(*tracks_paths_lists)):
         print(len(tracks_path_list))
