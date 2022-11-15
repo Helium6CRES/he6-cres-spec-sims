@@ -254,18 +254,20 @@ class EventBuilder:
         if betas_to_simulate == -1:
             betas_to_simulate = np.inf
 
-        print("events: ", events_to_simulate, "betas: ", betas_to_simulate)
+        print(f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
         while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
 
-            print("\nEvent: {}/{}...\n".format(event_num, events_to_simulate - 1))
+            # print("\nEvent: {}/{}...\n".format(event_num, events_to_simulate - 1))
 
             # generate trapped beta
             is_trapped = False
 
             while not is_trapped and beta_num < betas_to_simulate:
 
-                print("\nBeta: {}/{}...\n".format(beta_num, betas_to_simulate - 1))
+                if beta_num%250 ==0: 
+                    print(f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
+                    print(f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
 
                 # Does this miss some betas??? Be sure it doesn't.
                 beta_num += 1
@@ -276,7 +278,6 @@ class EventBuilder:
                 ) = self.physics.generate_beta_position_direction(beta_num)
 
                 energy = self.physics.generate_beta_energy(beta_num)
-                print("Beta Energy: ", energy)
 
                 single_segment_df = self.construct_untrapped_segment_df(
                     initial_position, initial_direction, energy, event_num, beta_num
@@ -401,15 +402,15 @@ class EventBuilder:
         trap_condition = 0
 
         if initial_theta < trapped_initial_theta:
-            print("Not Trapped: Pitch angle too small.")
+            # print("Not Trapped: Pitch angle too small.")
             trap_condition += 1
 
         if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
-            print("Not Trapped: Collided with guide wall.")
+            # print("Not Trapped: Collided with guide wall.")
             trap_condition += 1
 
         if trap_condition == 0:
-            print("Trapped!")
+            # print("Trapped!")
             return True
         else:
             return False

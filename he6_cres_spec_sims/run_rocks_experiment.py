@@ -37,15 +37,16 @@ def run_experiment(dict_path):
     print(f"\n\n\n Beginning simulation.\n\n\n")
 
     sim_experiment_params = json.load(open(dict_path))
-    for key, val in sim_experiment_params.items():
-        print("{}: {}".format(key, val))
 
     # Make the experiment name match the name of the .txt file. 
     experiment_name = Path(dict_path).stem
     sim_experiment_params["experiment_name"] = experiment_name
     sim_experiment = exp.RocksExperiment(sim_experiment_params)
 
-    print(f"\n\n\n Done running simulation. {sim_experiment_params}")
+    for key, val in sim_experiment_params.items():
+        print("{}: {}".format(key, val))
+
+    print(f"\n\n\n Submitted jobs for simulation experiment.")
 
     return None
 
