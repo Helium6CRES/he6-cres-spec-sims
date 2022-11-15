@@ -4,6 +4,8 @@ import sys
 import argparse
 from pathlib import Path
 from shutil import rmtree
+from glob import glob
+
 
 # Local imports.
 import rocks_experiment as exp
@@ -55,13 +57,13 @@ def run_experiment(dict_path):
     # Make the experiment name match the name of the .json file.
     for copy, exp_dir in enumerate(exp_copies_dirs):
 
-        experiment_name = exp_dir.stem 
+        experiment_name = exp_dir.stem
 
         sim_experiment_params["experiment_name"] = experiment_name
 
-        # Need to change the seeds of each copy or else they are identical. 
+        # Need to change the seeds of each copy or else they are identical.
         sim_experiment_params["rand_seeds"] = [
-            seed + copy*11 for seed in sim_experiment_params["rand_seeds"]
+            seed + copy * 11 for seed in sim_experiment_params["rand_seeds"]
         ]
 
         print("+++++++++++++++++++++++++++++++++++++++++++++++++\n")
@@ -83,8 +85,6 @@ def clean_up_experiment(dict_path):
 
     # Get the directory paths to the experiment (+ copies).
     exp_copies_dirs = get_exp_dirs(dict_path)
-    # exp_name = exp_copies_dirs[0].stem
-    # exp_dir = exp_copies_dirs[0].parent / Path(exp_name)
 
     # Check to see that all the exp copies are present.
     all_copies_exist = all([edir.exists() for edir in exp_copies_dirs])
@@ -93,13 +93,14 @@ def clean_up_experiment(dict_path):
             f"Not all of the {len(exp_copies_dirs)} copies are present: {exp_copies_dirs}"
         )
 
-    # # Build exp_dir.
-    # build_exp_dir(exp_dir)
-
     # Merge track csvs into exp_dir.
-    merge_csvs(exp_copies_dirs)
+    if len(exp_copies_dirs) > 1:
+        merge_csvs(exp_copies_dirs)
+        # del_dirs(exp_copies_dirs[1:])
+    else: 
+        print("No clean-up necessary, only one copy was created.")
 
-    # Then delete the old directories.
+    # Then delete the copy directories.
 
     return None
 
@@ -122,9 +123,12 @@ def build_exp_dir(exp_dir):
     return None
 
 
-# def get_exp_name(dict_path):
-#     experiment_name = Path(dict_path).stem
-#     return experiment_name
+def del_dirs(dirs):
+    for exp_dir in dirs: 
+        print(f"Recursively deleting dir: {exp_dir}")
+        rmtree(exp_dir)
+    return None
+
 
 def get_exp_dirs(dict_path):
 
@@ -138,9 +142,9 @@ def get_exp_dirs(dict_path):
 
     # Make the experiment name match the name of the .txt file.
     for copy in range(exp_copies):
-        if copy == 0: 
-            experiment_name = Path(dict_path).stem 
-        else: 
+        if copy == 0:
+            experiment_name = Path(dict_path).stem
+        else:
             experiment_name = Path(dict_path).stem + f"_{copy}"
 
         sim_experiment_params["experiment_name"] = experiment_name
@@ -152,34 +156,38 @@ def get_exp_dirs(dict_path):
 
 def merge_csvs(exp_copies_dirs):
 
-    # Make the output only tracks?? Yes, for now. 
+    # Make the output only tracks?? Yes, for now.
 
-    # Step 0:  Make 
-    resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
-    tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
-    tracks_exist = [path.is_file() for path in tracks_path_list]
+    # Step 0:  Make a list of lists that is the 
 
-    print(tracks_path_list, tracks_exist)
 
-    if not all(tracks_exist):
-        raise UserWarning(
-            f"{sum(tracks_exist)}/{len(tracks_exist)} track csvs are present."
-        )
+    for exp_dir in exp_copies_dirs: 
+        print(glob(exp_dir, recursive = False))
+    # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
+    # tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
+    # tracks_exist = [path.is_file() for path in tracks_path_list]
 
-    tracks_dfs = [
-        pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
-    ]
-    tracks_df = pd.concat(tracks_dfs, ignore_index=True)
-    lens = [len(df) for df in tracks_dfs]
-    print("\nCombining set of tracks_dfs.\n")
-    print("lengths: ", lens)
-    print("sum: ", sum(lens))
-    print("len single file (sanity check): ", len(tracks_df))
-    print("tracks index: ", tracks_df.index)
-    print("tracks cols: ", tracks_df.columns)
+    # print(tracks_path_list, tracks_exist)
 
-    tracks_df.to_csv(resultant_tracks_path)
-    events_df.to_csv(self.events_df_path)
+    # if not all(tracks_exist):
+    #     raise UserWarning(
+    #         f"{sum(tracks_exist)}/{len(tracks_exist)} track csvs are present."
+    #     )
+
+    # tracks_dfs = [
+    #     pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
+    # ]
+    # tracks_df = pd.concat(tracks_dfs, ignore_index=True)
+    # lens = [len(df) for df in tracks_dfs]
+    # print("\nCombining set of tracks_dfs.\n")
+    # print("lengths: ", lens)
+    # print("sum: ", sum(lens))
+    # print("len single file (sanity check): ", len(tracks_df))
+    # print("tracks index: ", tracks_df.index)
+    # print("tracks cols: ", tracks_df.columns)
+
+    # tracks_df.to_csv(resultant_tracks_path)
+    # events_df.to_csv(self.events_df_path)
 
     return None
 
