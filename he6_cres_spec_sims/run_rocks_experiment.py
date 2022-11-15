@@ -158,13 +158,32 @@ def merge_csvs(exp_copies_dirs):
 
     # Make the output only tracks?? Yes, for now.
 
-    # Step 0:  Make a list of lists that is the
+    # Step 0:  Gather all relevant paths. 
     tracks_paths_lists = []
     for exp_dir in exp_copies_dirs:
         tracks_paths_lists.append(sorted(list(exp_dir.glob("*/dmtracks.csv"))))
-        
-    for paths in zip(*tracks_paths_lists): 
-        print(paths)
+
+    for tracks_path_list in list(zip(*tracks_paths_lists)):
+        print(len(paths_list))
+        tracks_dfs = [
+            pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
+        ]
+
+        tracks_df = pd.concat(tracks_dfs, ignore_index=True)
+
+        # This should work as long as the sorted ordering remains sensible.
+        # In that I am assuming the first list item has no _0, _1, and so on. 
+        # The default mode is to overwrite ('w'). Just adding it for clarity. 
+        tracks_df.to_csv(tracks_path_list[0], mode = 'w')
+
+        lens = [len(df) for df in tracks_dfs]
+        print("\nCombining set of tracks_dfs.\n")
+        print("lengths: ", lens)
+        print("sum: ", sum(lens))
+        print("len single file (sanity check): ", len(tracks_df))
+        print("tracks index: ", tracks_df.index)
+        print("tracks cols: ", tracks_df.columns)
+
     # print("this:/n", zip(*tracks_paths_lists))
 
 
