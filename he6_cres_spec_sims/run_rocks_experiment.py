@@ -52,10 +52,20 @@ def run_experiment(dict_path):
 
     default_exp_copies = 1
     exp_copies = sim_experiment_params.pop("experiment_copies", 1)
+
     # Make the experiment name match the name of the .json file.
     for copy in range(exp_copies):
-        experiment_name = Path(dict_path).stem + f"_{copy}"
+        if copy == 0: 
+            experiment_name = Path(dict_path).stem 
+        else: 
+            experiment_name = Path(dict_path).stem + f"_{copy}"
+
         sim_experiment_params["experiment_name"] = experiment_name
+
+        # Need to change the seeds of each copy or else they are identical. 
+        sim_experiment_params["rand_seeds"] = [
+            seed + copy*11 for seed in sim_experiment_params["rand_seeds"]
+        ]
 
         print("+++++++++++++++++++++++++++++++++++++++++++++++++\n")
         print(f"Experiment Copy: {copy}\n")
@@ -74,10 +84,10 @@ def clean_up_experiment(dict_path):
 
     print(f"\n\n\nClean up.\n\n\n")
 
-    # Get the directory paths to the exp copies and to the resultant exp dir.
-    exp_copies_dirs = create_exp_dirs(dict_path)
-    exp_name = get_exp_name(dict_path)
-    exp_dir = exp_copies_dirs[0].parent / Path(exp_name)
+    # Get the directory paths to the experiment (+ copies).
+    exp_copies_dirs = get_exp_dirs(dict_path)
+    # exp_name = exp_copies_dirs[0].stem
+    # exp_dir = exp_copies_dirs[0].parent / Path(exp_name)
 
     # Check to see that all the exp copies are present.
     all_copies_exist = all([edir.exists() for edir in exp_copies_dirs])
@@ -86,11 +96,11 @@ def clean_up_experiment(dict_path):
             f"Not all of the {len(exp_copies_dirs)} copies are present: {exp_copies_dirs}"
         )
 
-    # Build exp_dir.
-    build_exp_dir(exp_dir)
+    # # Build exp_dir.
+    # build_exp_dir(exp_dir)
 
     # Merge track csvs into exp_dir.
-    merge_csvs(exp_dir, exp_copies_dirs)
+    merge_csvs(exp_copies_dirs)
 
     # Then delete the old directories.
 
@@ -115,12 +125,11 @@ def build_exp_dir(exp_dir):
     return None
 
 
-def get_exp_name(dict_path):
-    experiment_name = Path(dict_path).stem
-    return experiment_name
+# def get_exp_name(dict_path):
+#     experiment_name = Path(dict_path).stem
+#     return experiment_name
 
-
-def create_exp_dirs(dict_path):
+def get_exp_dirs(dict_path):
 
     exp_dirs = []
 
@@ -129,19 +138,26 @@ def create_exp_dirs(dict_path):
 
     default_exp_copies = 1
     exp_copies = sim_experiment_params.pop("experiment_copies", 1)
+
     # Make the experiment name match the name of the .txt file.
     for copy in range(exp_copies):
-        experiment_name = Path(dict_path).stem + f"_{copy}"
+        if copy == 0: 
+            experiment_name = Path(dict_path).stem 
+        else: 
+            experiment_name = Path(dict_path).stem + f"_{copy}"
+
         sim_experiment_params["experiment_name"] = experiment_name
         exp_dir = exp.get_experiment_dir(sim_experiment_params)
         exp_dirs.append(Path(exp_dir))
+
     return exp_dirs
 
 
-def merge_csvs(exp_dir, exp_copies_dirs):
+def merge_csvs(exp_copies_dirs):
 
-    # Change this to just tracks
-    # Make the output only tracks??
+    # Make the output only tracks?? Yes, for now. 
+
+    # Step 0:  Make 
     resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
     tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
     tracks_exist = [path.is_file() for path in tracks_path_list]
