@@ -162,8 +162,10 @@ def merge_csvs(exp_copies_dirs):
     tracks_paths_lists = []
     for exp_dir in exp_copies_dirs:
         tracks_paths_lists.append(sorted(list(exp_dir.glob("*/dmtracks.csv"))))
-
-    print("this:/n", zip(*tracks_paths_lists))
+        
+    for paths in zip(*tracks_paths_lists): 
+        print(paths)
+    # print("this:/n", zip(*tracks_paths_lists))
 
 
     # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
