@@ -97,7 +97,7 @@ def clean_up_experiment(dict_path):
     if len(exp_copies_dirs) > 1:
         merge_csvs(exp_copies_dirs)
         # del_dirs(exp_copies_dirs[1:])
-    else: 
+    else:
         print("No clean-up necessary, only one copy was created.")
 
     # Then delete the copy directories.
@@ -124,7 +124,7 @@ def build_exp_dir(exp_dir):
 
 
 def del_dirs(dirs):
-    for exp_dir in dirs: 
+    for exp_dir in dirs:
         print(f"Recursively deleting dir: {exp_dir}")
         rmtree(exp_dir)
     return None
@@ -158,11 +158,10 @@ def merge_csvs(exp_copies_dirs):
 
     # Make the output only tracks?? Yes, for now.
 
-    # Step 0:  Make a list of lists that is the 
+    # Step 0:  Make a list of lists that is the
 
-
-    for exp_dir in exp_copies_dirs: 
-        print(glob(exp_dir, recursive = False))
+    for exp_dir in exp_copies_dirs:
+        print(glob(exp_dir, recursive=False))
     # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
     # tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
     # tracks_exist = [path.is_file() for path in tracks_path_list]
