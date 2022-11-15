@@ -25,7 +25,7 @@ def main():
         help="path (str) to the pickled dict (.txt) that defines the run conditions of the experiment.",
     )
     arg(
-        "-c",
+        "-clean",
         "--clean_up",
         type=bool,
         default=False,
@@ -86,7 +86,18 @@ def clean_up_experiment(dict_path):
             f"Not all of the {len(exp_copies_dirs)} copies are present: {exp_copies_dirs}"
         )
 
-    # Check to see that the resultant exp directory isn't present.
+    # Build exp_dir. 
+    build_exp_dir(exp_dir)
+
+    # Merge track csvs into exp_dir. 
+    merge_csvs(exp_dir, exp_copies_dirs)
+
+    # Then delete the old directories.
+    
+    return None
+
+def build_exp_dir(exp_dir): 
+
     if not exp_dir.exists():
         print(f"Making resultant directory: {exp_dir}")
         exp_dir.mkdir()
@@ -99,11 +110,8 @@ def clean_up_experiment(dict_path):
         input("Press Enter to continue...")
         rmtree(exp_dir)
         exp_dir.mkdir()
-    
-    # Then combine them all into one directory without any prefix.
-    # Then delete the old directories.
-    return None
 
+    return None
 
 def get_exp_name(dict_path):
     experiment_name = Path(dict_path).stem
@@ -127,6 +135,36 @@ def create_exp_dirs(dict_path):
         exp_dirs.append(Path(exp_dir))
     return exp_dirs
 
+
+def merge_csvs(exp_dir, exp_copies_dirs):
+
+        # Change this to just tracks 
+        # Make the output only tracks??
+        resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
+        tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
+        tracks_exist = [path.is_file() for path in tracks_path_list]
+
+        if not all(tracks_exist):
+            raise UserWarning(
+                f"Only {sum(tracks_exist)}/{len(tracks_exist)} track csvs are present."
+            )
+
+        tracks_dfs = [
+            pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
+        ]
+        tracks_df = pd.concat(tracks_dfs, ignore_index=True)
+        lens = [len(df) for df in tracks_dfs]
+        print("\nCombining set of tracks_dfs.\n")
+        print("lengths: ", lens)
+        print("sum: ", sum(lens))
+        print("len single file (sanity check): ", len(tracks_df))
+        print("tracks index: ", tracks_df.index)
+        print("tracks cols: ", tracks_df.columns)
+
+        tracks_df.to_csv(resultant_tracks_path)
+        events_df.to_csv(self.events_df_path)
+
+        return None
 
 if __name__ == "__main__":
     main()
