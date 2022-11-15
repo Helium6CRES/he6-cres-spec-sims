@@ -79,7 +79,7 @@ def clean_up_experiment(dict_path):
 
     exp_copies_dirs = create_exp_dirs(dict_path)
     exp_name = get_exp_name(dict_path)
-    exp_dir = exp_copies_dirs[0].parent + Path(exp_name)
+    exp_dir = exp_copies_dirs[0].parent / Path(exp_name)
 
     print(exp_dir)
     print(exp_dir.exists())
