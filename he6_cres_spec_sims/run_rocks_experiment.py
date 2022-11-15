@@ -161,7 +161,7 @@ def merge_csvs(exp_copies_dirs):
     # Step 0:  Make a list of lists that is the
 
     for exp_dir in exp_copies_dirs:
-        print(glob(exp_dir, recursive=False))
+        print(exp_dir.glob("*/dmtracks.csv"))
     # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
     # tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
     # tracks_exist = [path.is_file() for path in tracks_path_list]
