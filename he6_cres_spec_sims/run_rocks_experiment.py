@@ -3,9 +3,7 @@ import json
 import sys
 import argparse
 from pathlib import Path
-
-# # Path to local imports.
-# sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
+from shutil import rmtree
 
 # Local imports.
 import rocks_experiment as exp
@@ -74,19 +72,34 @@ def run_experiment(dict_path):
 
 def clean_up_experiment(dict_path):
 
-    # First check to see that all the copies are present.
     print(f"\n\n\nClean up.\n\n\n")
 
+    # Get the directory paths to the exp copies and to the resultant exp dir.
     exp_copies_dirs = create_exp_dirs(dict_path)
     exp_name = get_exp_name(dict_path)
     exp_dir = exp_copies_dirs[0].parent / Path(exp_name)
 
-    print(exp_dir)
-    print(exp_dir.exists())
-    for edir in exp_copies_dirs:
-        print(edir)
-        print(edir.exists())
+    # Check to see that all the exp copies are present.
+    all_copies_exist = all([edir.exists() for edir in exp_copies_dirs])
+    if not all_copies_exist:
+        raise UserWarning(
+            f"Not all of the {len(exp_copies_dirs)} copies are present: {exp_copies_dirs}"
+        )
 
+    # Check to see that the resultant exp directory isn't present.
+    if not exp_dir.exists():
+        print(f"Making resultant directory: {exp_dir}")
+        exp_dir.mkdir()
+
+    else:
+        print("Directory already exists: {} ".format(exp_dir))
+        print(
+            "\nCAREFUL: Continuing will delete the contents of the above directory.\n"
+        )
+        input("Press Enter to continue...")
+        rmtree(exp_dir)
+        exp_dir.mkdir()
+    
     # Then combine them all into one directory without any prefix.
     # Then delete the old directories.
     return None
