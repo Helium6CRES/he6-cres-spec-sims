@@ -161,23 +161,20 @@ class Experiment:
 class ExpResults:
 
     experiment_params: dict
-    base_config: object
+    # base_config: object
     config_paths: List[pathlib.Path]
     sampled_gammas: pd.DataFrame
     experiment_results: pd.DataFrame
 
     @classmethod
-    def load(cls, experiment_params: dict = None, experiment_config_path: str = None, include_sampled_gammas = False):
+    def load(cls, experiment_config_path: str = None, include_sampled_gammas = False):
 
-        # Can either provide the experiment_params dict if you have it or a path to the
-        # exp_config.yaml file.
+        # Provide a path to the exp_config.yaml file.
+        experiment_config_path = pathlib.Path(experiment_config_path)
 
-        if experiment_params is None:
-            experiment_config_path = pathlib.Path(experiment_config_path)
-
-            # Open the config file and grab the contents.
-            with open(experiment_config_path, "r") as f:
-                experiment_params = yaml.load(f, Loader=yaml.FullLoader)
+        # Open the config file and grab the contents.
+        with open(experiment_config_path, "r") as f:
+            experiment_params = yaml.load(f, Loader=yaml.FullLoader)
 
         if (experiment_params is None) and (experiment_config_path is None):
 
@@ -187,14 +184,16 @@ class ExpResults:
 
         exp_results_dict = {
             "experiment_params": experiment_params,
-            "base_config": Config(experiment_params["base_config_path"]),
+            # "base_config": Config(experiment_params["base_config_path"]),
             "config_paths": None,
             "sampled_gammas": None,
             "experiment_results": None,
         }
 
         # Then collect all the config path names.
-        config_paths = get_config_paths(experiment_params)
+        # Note that the path in the experiment_params may be misleading if the 
+        # experiment was run on rocks. 
+        config_paths = get_config_paths_results(experiment_config_path)
         exp_results_dict["config_paths"] = config_paths
 
         tracks_list = []
@@ -238,10 +237,38 @@ class ExpResults:
 
         exp_results = cls(
             exp_results_dict["experiment_params"],
-            exp_results_dict["base_config"],
+            # exp_results_dict["base_config"],
             exp_results_dict["config_paths"],
             exp_results_dict["sampled_gammas"],
             exp_results_dict["experiment_results"],
         )
 
         return exp_results
+
+
+def get_config_paths_results(experiment_config_path: pathlib.Path) -> List[pathlib.Path]:
+
+    experiment_dir = experiment_config_path.parents[0]
+    print(experiment_dir)
+
+    suffix = "T.yaml"
+    config_paths = [
+        x
+        for x in experiment_dir.glob("**/*{}".format(suffix))
+        if (x.is_file() and ("ipynb" not in str(x)))
+    ]
+
+    if len(config_paths) == 0:
+        raise ValueError(
+            "No config files found in experiment_dir: {}. \n\
+            Have you run the experiment?\
+            (run: exp = exp.Experiment(experiment_params))".format(
+                experiment_dir
+            )
+        )
+
+    # The natsort ensures that you get a good ordering in terms of consecutive integers
+    # within the config file name.
+    config_paths = natsorted(config_paths, key=str)
+
+    return config_paths
