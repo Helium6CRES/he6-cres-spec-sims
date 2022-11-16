@@ -2,7 +2,39 @@
 
 # he6_cres_spec_sims
 
-A package for simulating cres data.
+A package for simulating cres experiments over a variety of magnetic field values.
+
+
+## Instructions: 
+
+* **Get set up**: 
+	* *Instructions:* 
+		* Log on to rocks. 
+		* `cd /data/eliza4/he6_cres/simulation/`
+		* Note: May need to upgrade pip. 
+			* For Winston and I this worked: `pip3 install --upgrade pip`
+			* For Heather the above didn't work and she needed to do the following: 
+		* `pip3 install -r he6-cres-spec-sims/requirements.txt`
+	* *Notes:*
+		* The following should contain all necessary python packages but if that isn't the case please let me (drew) know. 
+		* Be sure to add the `module load python-3.7.3` to your enviornment setup file or .bash_profile file so that you have access to python3.
+		* The above must be done by each user, as it's the current users python packages that the scripts below will be utilizing. 
+
+* **Simulate an Experiment**: 
+	* *Instructions:* 
+		* Log on to rocks. 
+		* `cd /data/eliza4/he6_cres/simulation/`
+		* Initial run: 
+			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.json"`
+				* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain. 
+		* Clean-up: 
+			* 
+	* *Notes:*
+		* Say one made a `.json` experiment config locally based on some queries to the he6 postgreSQL database. You could copy that to the rocks `sim_results/experiments` directory with a command like this: 
+			* `!scp /media/drew/T7\ Shield/spec_sims_results/rocks_experiments/exp_demo_nov2022.json drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments` 
+
+
+
 
 ## Notes as I build out the ability to run these simulations on rocks: 
 
@@ -77,6 +109,30 @@ A package for simulating cres data.
 		* First get cleanup working to first order.
 		* Why are print statements in the logs not matching my new code? May need to hard reset the remote?
 		* Get things working to first order by the end of the next block. Keep with the 45 minute chunks. 
+	* How to clean up??
+		* Ok how to actually do this? I need to consider this carefully. Should I make the clean-up more complex and make it match what the data class wants or make the data class different to accomadate this? 
+			* Hmm. It almost seems easier to do in the data class BUT what if it was 20 different directories. It's clunky not to combine those. 
+		* Ok also right now each one of these is an exact copy of the rest as I'm not changing the seeds at all... That's an issue. 
+
+	* Current approach. Commit to it then see how it works: 
+		* I make the base experiment plus some number of copies. The base has no subscript. 
+		* Then I go through and add the contents of the copies dmtracks to the original one by globbing through the different directories. 
+			* Be sure to add a `exp_copy` col or something to the dmtracks df. 
+		* Then copy to my local comp and make sure the experiment class still works. Edit as needed. 
+		* Stay with it, you got this. 
+	* **For tomorrow:** 
+		* Work on getting the exp dict copied to a local machine (reuse the rocks analysis code), and make sure the output makes sense and everything. Then need to go on to cleaning and commenting everthing. 
+		* Get this project to the DONE point.
+	* **For today (11/15/22)**: 
+		* Have tested the local and remote versions of the simulation run and the results visualizations by this evening. 
+	* **After lunch**: 
+		* Change naming conventions so they make more sense. 
+		* Get rid of the other stuff besides tracks. It's simpler like this. Make the experiment dir behave this way as well.
+		* Go through an entire rocks experiment and document here as you go -> Making the instructions as you go. 
+		* Then go through an entire local experiment and do the same. 
+		* Then try to get some nice visualizations in the readme. 
+		* Then work on cleaning things up and docstrings. 
+		* Head up. This is worth doing and worth doing well. You're doing great. But need to stay with it. 
 
 
 ## Done List: 
