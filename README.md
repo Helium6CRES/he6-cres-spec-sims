@@ -10,13 +10,13 @@ A package for simulating cres experiments over a variety of magnetic field value
 * **Get set up**: 
 	* *Instructions:* 
 		* Log on to rocks. 
-		* `cd /data/eliza4/he6_cres/simulation/`
-		* Note: May need to upgrade pip. 
+		* `cd /data/eliza4/he6_cres/simulation/` 
+	* *Notes:*
+		* May need to upgrade pip for the above to work on rocks. 
 			* For Winston and I this worked: `pip3 install --upgrade pip`
 			* For Heather the above didn't work and she needed to do the following: 
-		* `pip3 install -r he6-cres-spec-sims/requirements.txt`
-	* *Notes:*
-		* The following should contain all necessary python packages but if that isn't the case please let me (drew) know. 
+				* `pip3 install -r he6-cres-spec-sims/requirements.txt`
+		* The following should contain all necessary python packages but if that isn't the case please let me (Drew) know. 
 		* Be sure to add the `module load python-3.7.3` to your enviornment setup file or .bash_profile file so that you have access to python3.
 		* The above must be done by each user, as it's the current users python packages that the scripts below will be utilizing. 
 
