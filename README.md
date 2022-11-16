@@ -10,12 +10,11 @@ A package for simulating cres experiments over a variety of magnetic field value
 * **Get set up**: 
 	* *Instructions:* 
 		* Log on to rocks. 
-		* `cd /data/eliza4/he6_cres/simulation/` 
+		* `cd /data/eliza4/he6_cres/simulation/`
+		* `pip3 install -r he6-cres-spec-sims/requirements.txt` 
 	* *Notes:*
 		* May need to upgrade pip for the above to work on rocks. 
-			* For Winston and I this worked: `pip3 install --upgrade pip`
-			* For Heather the above didn't work and she needed to do the following: 
-				* `pip3 install -r he6-cres-spec-sims/requirements.txt`
+			* For Winston and I this worked: `pip3 install --upgrade pip`	
 		* The following should contain all necessary python packages but if that isn't the case please let me (Drew) know. 
 		* Be sure to add the `module load python-3.7.3` to your enviornment setup file or .bash_profile file so that you have access to python3.
 		* The above must be done by each user, as it's the current users python packages that the scripts below will be utilizing. 
@@ -26,13 +25,19 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* `cd /data/eliza4/he6_cres/simulation/`
 		* Initial run: 
 			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.json"`
-				* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain. 
 		* Clean-up: 
-			* 
+			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.json" -clean True`
 	* *Notes:*
-		* Say one made a `.json` experiment config locally based on some queries to the he6 postgreSQL database. You could copy that to the rocks `sim_results/experiments` directory with a command like this: 
-			* `!scp /media/drew/T7\ Shield/spec_sims_results/rocks_experiments/exp_demo_nov2022.json drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments` 
-
+		* Initial run:
+			* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain.
+			* Say one made a `.json` experiment config locally based on some queries to the he6 postgreSQL database. You could copy that to the rocks `sim_results/experiments` directory with a command like this: 
+				* `!scp /media/drew/T7\ Shield/spec_sims_results/rocks_experiments/exp_demo_nov2022.json drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
+			* Here `experiment_copies` number of independent (unique random seeds) but otherwise identical experiments are run over rocks. The experiment attribute `experiment_copies` is specified in the `.json` config file. It is parallelized such that each field specified in each copy is sent to a different node. So for example if the `.json` config had these attributes: `{"experiment_copies": 5, "beta_num": 1000, "fields_T": [1.0, 2.0, 3.0]}`, then 5 copies x 3 fields = 15 nodes would each simulate 1000 betas. 
+			* There needs to be a base config file in the `/sim_results/experiments` directory that the `.json` config file points to. One can copy a local `.yaml` file over from your local machine with a command like this: 
+				* TODO: FILL THIS IN. ALSO put all the base components necessary along with a demo in the repo somewhere.  
+			* Clean up:
+				* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
+				* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
 
 
 
