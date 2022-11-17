@@ -3,7 +3,8 @@ import scipy.special as sp
 from scipy.integrate import simps
 import math
 
-import spec_calc as sc
+import spec_tools.spec_calc.spec_calc as sc
+
 
 def rho_phi(center_x, center_y, time, frequency, field):
     """
