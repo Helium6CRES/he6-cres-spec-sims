@@ -1,10 +1,17 @@
 
+<p align="center"><img width="15%" src="/demo/readme_imgs/he6-cres_logo.png" /></p>
 
+--------------------------------------------------------------------------------
 # he6_cres_spec_sims
 
 A package for simulating cres experiments over a variety of magnetic field values.
 
+--------------------------------------------------------------------------------
+### Make nice interactive plots of cres track features
 
+<p align="center"><img width="40%" src="/demo/readme_imgs/choose_features.png" />              <img width="40%" src="/demo/readme_imgs/make_plot.png" /></p>
+
+--------------------------------------------------------------------------------
 ## Instructions for running simulations on CENPA cluster (rocks): 
 
 * **Get dependencies**: 
