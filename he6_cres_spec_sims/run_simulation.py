@@ -8,7 +8,7 @@ from pathlib import Path
 # from . import experiment as exp
 # Path to local imports.
 # sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
-
+sys.path.append("/data/eliza4/he6_cres/simulation/he6-cres-spec-sims")
 import he6_cres_spec_sims.simulation as sim
 
 
