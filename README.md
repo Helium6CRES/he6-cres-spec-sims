@@ -22,15 +22,15 @@ A package for simulating cres experiments over a variety of magnetic field value
 * **Simulate an experiment**: 
 	* *Instructions:* 
 		* Log on to rocks. 
-		* `cd /data/eliza4/he6_cres/simulation/`
+		* `cd /data/eliza4/he6_cres/simulation/he6-cres-spec-sims`
 		* Set up: 
 			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in the following directory on rocks: `/data/eliza4/he6_cres/simulation/sim_results/experiments/`. See (TODO WHERE TO DOCUMENT THIS) somewhere for more details on what these two config files must contain. 
 			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
 				* `!scp /home/drew/He6CRES/he6-cres-spec-sims/config_files/rocks* drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
 		* Initial run: 
-			* `./he6-cres-spec-sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json"`
+			* `./he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json"`
 		* Clean-up: 
-			* `./he6-cres-spec-sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json" -clean True`
+			* `./he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json" -clean True`
 	* *Notes:*
 		* Initial run:
 			* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain.

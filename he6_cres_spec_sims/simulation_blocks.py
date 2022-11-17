@@ -437,8 +437,8 @@ class SegmentBuilder:
         scattered_segments_list = []
 
         for event_index, event in trapped_event_df.iterrows():
-
-            print("\nScattering Event :", event_index)
+            if event_index % 25 == 0:
+                print("\nScattering Event :", event_index)
 
             # Assign segment 0 of event with a segment_length.
             event["segment_length"] = self.segment_length()
@@ -476,11 +476,11 @@ class SegmentBuilder:
             while True:
 
                 if jump_num >= self.config.segmentbuilder.jump_num_max:
-                    print(
-                        "Event reached jump_num_max : {}".format(
-                            self.config.segmentbuilder.jump_num_max
-                        )
-                    )
+                    # print(
+                    #     "Event reached jump_num_max : {}".format(
+                    #         self.config.segmentbuilder.jump_num_max
+                    #     )
+                    # )
                     break
 
                 print("Jump: {jump_num}".format(jump_num=jump_num))
