@@ -33,9 +33,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
-from he6_cres_spec_sims import simulation_blocks as sim_blocks
-
+import spec_tools.spec_calc.spec_calc as sc
+import simulation_blocks as sim_blocks
 
 class Simulation:
     """TODO: DOCUMENT"""
