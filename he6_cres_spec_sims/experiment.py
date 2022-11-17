@@ -9,8 +9,9 @@ import typing
 from typing import List
 import yaml
 
-from . import simulation as sim
-from .simulation_blocks import Config
+import he6_cres_spec_sims.simulation as sim
+from he6_cres_spec_sims.simulation_blocks import Config
+
 # from .spec_tools import beta_source as source
 import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
@@ -167,20 +168,18 @@ class ExpResults:
     tracks: pd.DataFrame
 
     @classmethod
-    def load(cls, experiment_config_path: str = None, include_sampled_gammas = False):
+    def load(cls, experiment_config_path: str = None, include_sampled_gammas=False):
 
-        # Provide a path to the exp_config.yaml file.
+        # Path to the exp_config.yaml file.
         experiment_config_path = pathlib.Path(experiment_config_path)
 
         # Open the config file and grab the contents.
         with open(experiment_config_path, "r") as f:
             experiment_params = yaml.load(f, Loader=yaml.FullLoader)
 
-        if (experiment_params is None) and (experiment_config_path is None):
+        if experiment_config_path is None:
 
-            raise ValueError(
-                "Need to provide either experiment_params or exp_config_path."
-            )
+            raise ValueError("Need to provide experiment_config_path.")
 
         exp_results_dict = {
             "experiment_params": experiment_params,
@@ -191,8 +190,8 @@ class ExpResults:
         }
 
         # Then collect all the config path names.
-        # Note that the path in the experiment_params may be misleading if the 
-        # experiment was run on rocks. 
+        # Note that the path in the experiment_params may be misleading if the
+        # experiment was run on rocks.
         config_paths = get_config_paths_results(experiment_config_path)
         exp_results_dict["config_paths"] = config_paths
 
@@ -222,7 +221,7 @@ class ExpResults:
             tracks["trap_current"] = trap_current
             tracks_list.append(tracks)
 
-            if include_sampled_gammas: 
+            if include_sampled_gammas:
                 # Get the betas that were sampled during the simulation.
                 beta_source_ne19 = source.BetaSource(config)
                 sampled_energies = beta_source_ne19.energy_array[: int(beta_num)]
@@ -246,7 +245,9 @@ class ExpResults:
         return exp_results
 
 
-def get_config_paths_results(experiment_config_path: pathlib.Path) -> List[pathlib.Path]:
+def get_config_paths_results(
+    experiment_config_path: pathlib.Path,
+) -> List[pathlib.Path]:
 
     experiment_dir = experiment_config_path.parents[0]
     print(experiment_dir)

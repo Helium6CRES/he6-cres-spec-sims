@@ -5,7 +5,7 @@
 A package for simulating cres experiments over a variety of magnetic field values.
 
 
-## Instructions: 
+## Instructions for running simulations on CENPA cluster (rocks): 
 
 * **Get Dependencies**: 
 	* *Instructions:* 
@@ -42,7 +42,19 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Clean up:
 			* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
 			* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
-
+	* **Analyzing simulation results**: 
+		* *Intructions:* 
+			* Use the class `SimulationResults` from the `results.py` module (need to have a local copy of the repo) to grab the experiment results. 
+			* Example code to be run in ipynb or within a script: 
+				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")`
+				* `from he6_cres_spec_sims.results import SimulationResults`
+				* `local_dir = "/media/drew/T7 Shield/spec_sims_results/rocks_experiments"`
+				* `sim_exp_name = "rocks_exp_config_example"`
+				* `sim = SimulationResults(local_dir = local_dir, sim_exp_name = sim_exp_name )`
+			* Explore all that the `sim` instance contains: `sim.results.__dict__`
+			* All simulated tracks (as pd.DataFrame) are here: `sim.results.tracks`
+		* *Notes:*
+			* The demo ipynb also illustrates (PUT PATH TO IT) how to do this. 
 
 
 ## Notes as I build out the ability to run these simulations on rocks: 
