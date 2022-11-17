@@ -148,6 +148,10 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Keep going with the readme for the local experiment.
 		* Should I put scatter in the experiment data class? Because rn I need a different version of that for the local stuff. Yes need to make this work better. Or maybe honestly don't bother because the local experiments are less important? 
 
+	* **After lunch**: 
+		* Ok so it seems like the importing of he6specsims as a pypi package may be making my local imports fail in a way I can't detect in rocks. This is annoying af and needs to be addressed asap because I can't even really tell what's being changed on rocks...
+			* For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this. 
+
 
 ## Done List: 
 * Change naming conventions so they make more sense.

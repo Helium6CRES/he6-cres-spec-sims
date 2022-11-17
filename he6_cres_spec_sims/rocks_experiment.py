@@ -12,8 +12,8 @@ import subprocess as sp
 
 import simulation as sim
 from simulation_blocks import Config
-import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
-import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+import spec_tools.beta_source.beta_source as source
+import spec_tools.spec_calc.spec_calc as sc
 
 
 # Utility function:
@@ -172,7 +172,7 @@ class RocksExperiment:
         DOCUMENT.
         """
         experiment_name = self.experiment_params["experiment_name"]
-        
+
         # Could make following a command line argument. 
         tlim = "12:00:00"
 

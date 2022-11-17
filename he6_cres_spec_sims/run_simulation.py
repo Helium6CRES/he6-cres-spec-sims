@@ -9,7 +9,7 @@ from pathlib import Path
 # Path to local imports.
 # sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
 
-import he6_cres_spec_sims.simulation as sim
+import simulation as sim
 
 
 def main():
