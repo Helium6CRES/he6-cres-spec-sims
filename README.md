@@ -1,5 +1,5 @@
 
-<p align="center"><img width="35%" src="/demo/readme_imgs/he6-cres_logo.png" /></p>
+<p align="center"><img width="30%" src="/demo/readme_imgs/he6-cres_logo.png" /></p>
 
 --------------------------------------------------------------------------------
 # he6_cres_spec_sims
@@ -57,7 +57,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* *Intructions:* 
 			* Use the class `SimulationResults` from the `results.py` module (need to have a local copy of the repo) to grab the experiment results. 
 			* Example code to be run in ipynb or within a script: 
-				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")`
+				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")` (enables you to run this anywhere, change paths to be your own)
 				* `from he6_cres_spec_sims.results import SimulationResults`
 				* `local_dir = "/media/drew/T7 Shield/spec_sims_results/rocks_experiments"`
 				* `sim_exp_name = "rocks_exp_config_example"`
@@ -98,7 +98,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* *Intructions:* 
 			* Use the class `ExperimentResults` from the `experiment.py` module to grab the experiment results. 
 			* Example code to be run in ipynb or within a script: 
-				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")`
+				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")` (enables you to run this anywhere, change paths to be your own)
 				* `from he6_cres_spec_sims.experiment import ExpResults`
 				* `experiment_config_path = "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example/local_exp_config_example_exp.yaml"`
 				* `sim = ExpResults.load(experiment_config_path =experiment_config_path  )`
@@ -108,7 +108,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/local_sim_experiment_demo.ipynb`.
 
 
-## Random Notes: 
+## In case of : 
 
 * 
 
