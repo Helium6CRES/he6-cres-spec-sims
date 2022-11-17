@@ -9,7 +9,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 --------------------------------------------------------------------------------
 ### Make nice interactive plots of cres track features
 
-<p align="center"><img width="40%" src="/demo/readme_imgs/choose_features.png" />              <img width="40%" src="/demo/readme_imgs/make_plot.png" /></p>
+<p align="center"><img width="40%" src="/demo/readme_imgs/plot_stuff.png" />              <img width="60%" src="/demo/readme_imgs/make_plot.png" /></p>
 
 --------------------------------------------------------------------------------
 ## Instructions for running simulations on CENPA cluster (rocks): 
