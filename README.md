@@ -26,7 +26,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Set up: 
 			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in the following directory on rocks: `/data/eliza4/he6_cres/simulation/sim_results/experiments/`. See (TODO WHERE TO DOCUMENT THIS) somewhere for more details on what these two config files must contain. 
 			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
-				* `!scp /home/drew/He6CRES/he6-cres-spec-sims/config_files/* drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
+				* `!scp /home/drew/He6CRES/he6-cres-spec-sims/config_files/rocks* drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
 		* Initial run: 
 			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json"`
 		* Clean-up: 
@@ -141,13 +141,15 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Then work on cleaning things up and docstrings. 
 		* Head up. This is worth doing and worth doing well. You're doing great. But need to stay with it. 
 	* **START HERE! After lunch**: 
-		* Change naming conventions so they make more sense. 
+		 
 		* Get rid of the other stuff besides tracks. It's simpler like this. Make the experiment dir behave this way as well.
 		* See if things break when you crank up the number of simulations/ number of betas simulated. 
 		* Put demo .ipynb in the repo. Make one for a local experiment and a rocks experiment. 
-		* Keep going with the readme for the local experiment 
+		* Keep going with the readme for the local experiment.
+		* Should I put scatter in the experiment data class? Because rn I need a different version of that for the local stuff. Yes need to make this work better. Or maybe honestly don't bother because the local experiments are less important? 
 
 
 ## Done List: 
+* Change naming conventions so they make more sense.
 
 * Get field 
