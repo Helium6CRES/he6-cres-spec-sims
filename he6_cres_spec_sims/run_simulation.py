@@ -3,6 +3,8 @@ import json
 import sys
 import argparse
 from pathlib import Path
+import pytz
+import datetime
 
 # Local imports.
 # from . import experiment as exp
@@ -35,6 +37,7 @@ def main():
 
 def run_simulation(sim_config_path):
 
+    get_pst_time()
     print(f"\n\n\n Beginning simulation. Path: {sim_config_path} \n\n\n")
 
     simulation = sim.Simulation(Path(sim_config_path))
@@ -44,6 +47,11 @@ def run_simulation(sim_config_path):
 
     return None
 
+# Utility.
+def get_pst_time():
+    tz = pytz.timezone("US/Pacific")
+    pst_now = datetime.datetime.now(tz).replace(microsecond=0).replace(tzinfo=None)
+    return pst_now
 
 if __name__ == "__main__":
     main()
