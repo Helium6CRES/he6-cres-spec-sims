@@ -7,7 +7,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ## Instructions for running simulations on CENPA cluster (rocks): 
 
-* **Get Dependencies**: 
+* **Get dependencies**: 
 	* *Instructions:* 
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/`
@@ -19,7 +19,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Be sure to add the `module load python-3.7.3` to your enviornment setup file or .bash_profile file so that you have access to python3.
 		* The above must be done by each user, as it's the current users python packages that the scripts below will be utilizing. 
 
-* **Simulate an Experiment**: 
+* **Simulate an experiment**: 
 	* *Instructions:* 
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/`
@@ -55,6 +55,35 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* All simulated tracks (as pd.DataFrame) are here: `sim.results.tracks`
 		* *Notes:*
 			* The demo ipynb also illustrates (PUT PATH TO IT) how to do this. 
+
+## Instructions for running simulations locally: 
+
+* **Get dependencies**: 
+	* *Instructions:* 
+		* Navigate into desired parent directory.
+		* Clone the repo, or `git pull` if you already have it. A hard reset to the remote may be necessary if you have an old version. (NEED THE DEV BRNACH TO BE WORKING.)  
+			* `git clone git@github.com:Helium6CRES/he6-cres-spec-sims.git`
+		* `pip3 install -r he6-cres-spec-sims/requirements.txt` 
+	* *Notes:*
+		* You will need pip3 for the above to work. 
+
+* **Simulate an experiment**: 
+	* *Instructions:* 
+		* Navigate into your `he6-cres-spec-sims` parent directory.
+		* Set up: 
+			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in a directory suited for simulation results. For me this is in an external drive. 
+			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
+				* `cp /home/drew/He6CRES/he6-cres-spec-sims/config_files/local* /media/drew/T7\ Shield/spec_sims_results/local_experiments`
+			* The `base_config_path` field in the `.json` experiment config needs to be manually changed to point at the `.yaml` base config file. Change this path. 
+		* Run experiment: 
+			* `./he6-cres-spec-sims/run_local_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json"`
+
+	* *Notes:*
+		* Run experiment:
+			* No clean-up is necessary. 
+			* The only difference between the config files used locally and on rocks is that there is no `experiment_copies` field in the local `.json` config. The base config (`.yaml`) is identical. 
+
+
 
 
 ## Notes as I build out the ability to run these simulations on rocks: 
@@ -170,8 +199,15 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Then clean up the readme. add nice pictures. 
 		* Then go and make sure the katydid on rocks works still after changing the spec sims... Need that to work.. Then work on getting that readme up to snuff. You can do it. Forget about everything else. Make these two readmes work! That is a big accomplishment this week. 
 
+	* **11/17/22:**
+		* After first break: 
+			* Finish up with the local instuctions and demo. 
+			* Then work on getting the run_rocks_exp working in the upper directory. That follows a better pattern. 
+
 
 ## Done List: 
 * Change naming conventions so they make more sense.
 
-* Get field 
+## Imports!
+
+* Ok so generally I'm doing things right but things get wierd when you try to run a script inside your package. That generally causes issues. So try to get run_rocks_exp also working outside of the package. 
