@@ -27,14 +27,17 @@ Classes contained in module:
 import json
 import math
 import os
+import sys
 
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from pathlib import Path
+# Path to local imports.
+sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
+from he6_cres_spec_sims.spec_tools.spec_calc import spec_calc as sc
+import he6_cres_spec_sims.simulation_blocks as sim_blocks
 
-import spec_tools.spec_calc.spec_calc as sc
-import simulation_blocks as sim_blocks
 
 class Simulation:
     """TODO: DOCUMENT"""
@@ -66,7 +69,9 @@ class Simulation:
         # specbuilder.run(spec_array)
 
         # Save the results of the simulation:
-        results = Results(events, segments, bands, tracks, dmtracks)
+        # For now as of 11/15/22 I am only writing dmtracks to keep things
+        # lightweight.
+        results = Results(dmtracks)
         results.save(self.config_path)
 
         return None
@@ -95,19 +100,12 @@ class Simulation:
 @dataclass
 class Results:
 
-    events: pd.DataFrame
-    segments: pd.DataFrame
-    bands: pd.DataFrame
-    tracks: pd.DataFrame
     dmtracks: pd.DataFrame
 
     def save(self, config_path):
-
+        # 11/15/22: Not writing these other outputs to make the
+        # simulations more lightweight.
         results_dict = {
-            "events": self.events,
-            "segments": self.segments,
-            "bands": self.bands,
-            "tracks": self.tracks,
             "dmtracks": self.dmtracks,
         }
 
@@ -126,14 +124,12 @@ class Results:
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
-            # 11/15/22: Not writing these other outputs to make the 
-            # simulations more lightweight. 
-            if data_name == "dmtracks":
-                try:
-                    data.to_csv(results_dir / "{}.csv".format(data_name))
-                except Exception as e:
-                    print("Unable to write {} data.".format(data_name))
-                    raise e
+
+            try:
+                data.to_csv(results_dir / "{}.csv".format(data_name))
+            except Exception as e:
+                print("Unable to write {} data.".format(data_name))
+                raise e
 
     @classmethod
     def load(cls, config_path):

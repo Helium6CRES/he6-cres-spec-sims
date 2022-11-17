@@ -151,6 +151,12 @@ A package for simulating cres experiments over a variety of magnetic field value
 	* **After lunch**: 
 		* Ok so it seems like the importing of he6specsims as a pypi package may be making my local imports fail in a way I can't detect in rocks. This is annoying af and needs to be addressed asap because I can't even really tell what's being changed on rocks...
 			* For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this. 
+	* **For tomorrow**: 
+		* Import issues. It seems like the convention that is necessary on rocks is different than what's necessary locally. This is annoying af. Try to remedy this asap and get it working through the entire process. I thought I understood... 
+			* Need it tow work here as well: http://localhost:8888/lab/tree/He6CRES/he6sim_dev/he6sim_rocks_dev_11152022.ipynb
+		* Then go on to make the instructions for a local simulation experiment. 
+		* Then clean up the readme. add nice pictures. 
+		* Then go and make sure the katydid on rocks works still after changing the spec sims... Need that to work.. Then work on getting that readme up to snuff. You can do it. Forget about everything else. Make these two readmes work! That is a big accomplishment this week. 
 
 
 ## Done List: 
