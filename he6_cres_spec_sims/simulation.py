@@ -103,6 +103,7 @@ class Results:
     dmtracks: pd.DataFrame
 
     def save(self, config_path):
+
         results_dict = {
             "events": self.events,
             "segments": self.segments,
@@ -126,21 +127,18 @@ class Results:
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
-            #             print(data_name, data)
-
-            try:
-                data.to_csv(results_dir / "{}.csv".format(data_name))
-            except Exception as e:
-                print("Unable to write {} data.".format(data_name))
-                raise e
+            # 11/15/22: Commenting out these other outputs to make the 
+            # simulations more lightweight. 
+            if data_name = "dmtracks":
+                try:
+                    data.to_csv(results_dir / "{}.csv".format(data_name))
+                except Exception as e:
+                    print("Unable to write {} data.".format(data_name))
+                    raise e
 
     @classmethod
     def load(cls, config_path):
         results_dict = {
-            "events": None,
-            "segments": None,
-            "bands": None,
-            "tracks": None,
             "dmtracks": None,
         }
         # Load results.
@@ -162,10 +160,6 @@ class Results:
                 raise e
 
         results = cls(
-            results_dict["events"],
-            results_dict["segments"],
-            results_dict["bands"],
-            results_dict["tracks"],
             results_dict["dmtracks"],
         )
 

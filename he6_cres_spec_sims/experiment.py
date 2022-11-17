@@ -164,7 +164,7 @@ class ExpResults:
     # base_config: object
     config_paths: List[pathlib.Path]
     sampled_gammas: pd.DataFrame
-    experiment_results: pd.DataFrame
+    tracks: pd.DataFrame
 
     @classmethod
     def load(cls, experiment_config_path: str = None, include_sampled_gammas = False):
@@ -187,7 +187,7 @@ class ExpResults:
             # "base_config": Config(experiment_params["base_config_path"]),
             "config_paths": None,
             "sampled_gammas": None,
-            "experiment_results": None,
+            "tracks": None,
         }
 
         # Then collect all the config path names.
@@ -233,14 +233,14 @@ class ExpResults:
             exp_results_dict["sampled_gammas"] = pd.DataFrame.from_dict(
                 dict(zip(fields, sampled_gammas))
             )
-        exp_results_dict["experiment_results"] = pd.concat(tracks_list)
+        exp_results_dict["tracks"] = pd.concat(tracks_list)
 
         exp_results = cls(
             exp_results_dict["experiment_params"],
             # exp_results_dict["base_config"],
             exp_results_dict["config_paths"],
             exp_results_dict["sampled_gammas"],
-            exp_results_dict["experiment_results"],
+            exp_results_dict["tracks"],
         )
 
         return exp_results

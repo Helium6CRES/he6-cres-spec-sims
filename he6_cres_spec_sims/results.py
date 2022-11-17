@@ -154,7 +154,7 @@ class SimulationResults:
                 f"Experiment not loaded. No results to display scatter plots for."
             )
 
-        df = self.results.experiment_results
+        df = self.results.tracks
 
         if fix_field:
             condition = df.field == field_value

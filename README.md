@@ -7,7 +7,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ## Instructions: 
 
-* **Get set up**: 
+* **Get Dependencies**: 
 	* *Instructions:* 
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/`
@@ -23,10 +23,14 @@ A package for simulating cres experiments over a variety of magnetic field value
 	* *Instructions:* 
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/`
+		* Set up: 
+			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in the following directory on rocks: `/data/eliza4/he6_cres/simulation/sim_results/experiments/`. See (TODO WHERE TO DOCUMENT THIS) somewhere for more details on what these two config files must contain. 
+			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
+				* `!scp /home/drew/He6CRES/he6-cres-spec-sims/config_files/* drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
 		* Initial run: 
-			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.json"`
+			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json"`
 		* Clean-up: 
-			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.json" -clean True`
+			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json" -clean True`
 	* *Notes:*
 		* Initial run:
 			* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain.
@@ -35,9 +39,9 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* Here `experiment_copies` number of independent (unique random seeds) but otherwise identical experiments are run over rocks. The experiment attribute `experiment_copies` is specified in the `.json` config file. It is parallelized such that each field specified in each copy is sent to a different node. So for example if the `.json` config had these attributes: `{"experiment_copies": 5, "beta_num": 1000, "fields_T": [1.0, 2.0, 3.0]}`, then 5 copies x 3 fields = 15 nodes would each simulate 1000 betas. 
 			* There needs to be a base config file in the `/sim_results/experiments` directory that the `.json` config file points to. One can copy a local `.yaml` file over from your local machine with a command like this: 
 				* TODO: FILL THIS IN. ALSO put all the base components necessary along with a demo in the repo somewhere.  
-			* Clean up:
-				* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
-				* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
+		* Clean up:
+			* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
+			* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
 
 
 
@@ -130,14 +134,18 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Get this project to the DONE point.
 	* **For today (11/15/22)**: 
 		* Have tested the local and remote versions of the simulation run and the results visualizations by this evening. 
-	* **After lunch**: 
-		* Change naming conventions so they make more sense. 
-		* Get rid of the other stuff besides tracks. It's simpler like this. Make the experiment dir behave this way as well.
+	* **After breakfast**: 
 		* Go through an entire rocks experiment and document here as you go -> Making the instructions as you go. 
 		* Then go through an entire local experiment and do the same. 
 		* Then try to get some nice visualizations in the readme. 
 		* Then work on cleaning things up and docstrings. 
 		* Head up. This is worth doing and worth doing well. You're doing great. But need to stay with it. 
+	* **START HERE! After lunch**: 
+		* Change naming conventions so they make more sense. 
+		* Get rid of the other stuff besides tracks. It's simpler like this. Make the experiment dir behave this way as well.
+		* See if things break when you crank up the number of simulations/ number of betas simulated. 
+		* Put demo .ipynb in the repo. Make one for a local experiment and a rocks experiment. 
+		* Keep going with the readme for the local experiment 
 
 
 ## Done List: 
