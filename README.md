@@ -11,6 +11,8 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 <p align="center"><img width="40%" src="/demo/readme_imgs/plot_stuff.png" />              <img width="50%" src="/demo/readme_imgs/make_plot.png" /></p>
 
+<p align="center"><img width="40%" src="/demo/readme_imgs/plot_stuff_1.png" />              <img width="50%" src="/demo/readme_imgs/make_plot_1.png" /></p>
+
 --------------------------------------------------------------------------------
 ## Instructions for running simulations on CENPA cluster (rocks): 
 
@@ -49,6 +51,8 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Clean up:
 			* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
 			* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
+		* General: 
+			* The logs will get very clogged up with different `.txt` files. Occassionally just delete the contents of `simulation/sim_logs`.
 	* **Analyzing simulation results**: 
 		* *Intructions:* 
 			* Use the class `SimulationResults` from the `results.py` module (need to have a local copy of the repo) to grab the experiment results. 
@@ -103,10 +107,16 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* *Notes:*
 			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/local_sim_experiment_demo.ipynb`.
 
+
+## Random Notes: 
+
+* 
+
+
 ## To Dos (11/17/22): 
 
 * Work on making a visual readme. Get some demos of the functionality. 
-* Note somewhere that the logs should be deleted every once in a while. 
+* Note somewhere that  
 * Clean up the code and make docstrings! You got this. 
 * Merge this branch into develop. 
 * Test a rocks run with a lot of stats to see what breaks.
