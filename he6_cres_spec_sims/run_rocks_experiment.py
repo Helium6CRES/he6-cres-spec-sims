@@ -53,6 +53,7 @@ def run_experiment(dict_path):
     # Load the .json file into a dictionary.
     sim_experiment_params = json.load(open(dict_path))
 
+    # Make directory to put 
     exp_copies_dirs = get_exp_dirs(dict_path)
 
     # Make the experiment name match the name of the .json file.

@@ -15,7 +15,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 	* *Notes:*
 		* May need to upgrade pip for the above to work on rocks. 
 			* For Winston and I this worked: `pip3 install --upgrade pip`	
-		* The following should contain all necessary python packages but if that isn't the case please let me (Drew) know. 
+		* The following should contain all necessary python packages but if that isn't the case please let Drew Byron know. 
 		* Be sure to add the `module load python-3.7.3` to your enviornment setup file or .bash_profile file so that you have access to python3.
 		* The above must be done by each user, as it's the current users python packages that the scripts below will be utilizing. 
 
@@ -30,7 +30,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Initial run: 
 			* `./he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json"`
 		* Clean-up: 
-			* `./he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json" -clean True`
+			* `./he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_exp_config_example.json" -clean True` 
 	* *Notes:*
 		* Initial run:
 			* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain.
@@ -54,7 +54,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* Explore all that the `sim` instance contains: `sim.results.__dict__`
 			* All simulated tracks (as pd.DataFrame) are here: `sim.results.tracks`
 		* *Notes:*
-			* The demo ipynb also illustrates (PUT PATH TO IT) how to do this. 
+			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/rocks_sim_experiment_demo.ipynb`.
 
 ## Instructions for running simulations locally: 
 
@@ -83,8 +83,23 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* No clean-up is necessary. 
 			* The only difference between the config files used locally and on rocks is that there is no `experiment_copies` field in the local `.json` config. The base config (`.yaml`) is identical. 
 
+	* **Analyzing simulation results**: 
+		* *Intructions:* 
+			* Use the class `ExperimentResults` from the `experiment.py` module to grab the experiment results. 
+			* Example code to be run in ipynb or within a script: 
+				* `sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")`
+				* `from he6_cres_spec_sims.experiment import ExpResults`
+				* `experiment_config_path = "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example/local_exp_config_example_exp.yaml"`
+				* `sim = ExpResults.load(experiment_config_path =experiment_config_path  )`
+			* Explore all that the `sim` instance contains: `sim.__dict__`
+			* All simulated tracks (as pd.DataFrame) are here: `sim.tracks`
+		* *Notes:*
+			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/local_sim_experiment_demo.ipynb`.
 
+## To Dos (11/17/22): 
 
+* 1006: One last time through the entire thing, on rocks and local. Making sure all the imports work. 
+* Note somewhere that the logs should be deleted every once in a while. 
 
 ## Notes as I build out the ability to run these simulations on rocks: 
 
