@@ -197,91 +197,91 @@ class RocksExperiment:
         return None
 
 
-@dataclass
-class ExpResults:
+# @dataclass
+# class ExpResults:
 
-    experiment_params: dict
-    base_config: object
-    config_paths: List[pathlib.Path]
-    sampled_gammas: pd.DataFrame
-    experiment_results: pd.DataFrame
+#     experiment_params: dict
+#     base_config: object
+#     config_paths: List[pathlib.Path]
+#     sampled_gammas: pd.DataFrame
+#     experiment_results: pd.DataFrame
 
-    @classmethod
-    def load(cls, experiment_params: dict = None, experiment_config_path: str = None, include_sampled_gammas = False):
+#     @classmethod
+#     def load(cls, experiment_params: dict = None, experiment_config_path: str = None, include_sampled_gammas = False):
 
-        # Can either provide the experiment_params dict if you have it or a path to the
-        # exp_config.yaml file.
+#         # Can either provide the experiment_params dict if you have it or a path to the
+#         # exp_config.yaml file.
 
-        if experiment_params is None:
-            experiment_config_path = pathlib.Path(experiment_config_path)
+#         if experiment_params is None:
+#             experiment_config_path = pathlib.Path(experiment_config_path)
 
-            # Open the config file and grab the contents.
-            with open(experiment_config_path, "r") as f:
-                experiment_params = yaml.load(f, Loader=yaml.FullLoader)
+#             # Open the config file and grab the contents.
+#             with open(experiment_config_path, "r") as f:
+#                 experiment_params = yaml.load(f, Loader=yaml.FullLoader)
 
-        if (experiment_params is None) and (experiment_config_path is None):
+#         if (experiment_params is None) and (experiment_config_path is None):
 
-            raise ValueError(
-                "Need to provide either experiment_params or exp_config_path."
-            )
+#             raise ValueError(
+#                 "Need to provide either experiment_params or exp_config_path."
+#             )
 
-        exp_results_dict = {
-            "experiment_params": experiment_params,
-            "base_config": Config(experiment_params["base_config_path"]),
-            "config_paths": None,
-            "sampled_gammas": None,
-            "experiment_results": None,
-        }
+#         exp_results_dict = {
+#             "experiment_params": experiment_params,
+#             "base_config": Config(experiment_params["base_config_path"]),
+#             "config_paths": None,
+#             "sampled_gammas": None,
+#             "experiment_results": None,
+#         }
 
-        # Then collect all the config path names.
-        config_paths = get_config_paths(experiment_params)
-        exp_results_dict["config_paths"] = config_paths
+#         # Then collect all the config path names.
+#         config_paths = get_config_paths(experiment_params)
+#         exp_results_dict["config_paths"] = config_paths
 
-        tracks_list = []
-        sampled_gammas = []
-        fields = []
+#         tracks_list = []
+#         sampled_gammas = []
+#         fields = []
 
-        # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
-        # Note that if this is -1 then you get the entire array (event_mode).
-        beta_num = experiment_params["betas_to_simulate"]
+#         # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
+#         # Note that if this is -1 then you get the entire array (event_mode).
+#         beta_num = experiment_params["betas_to_simulate"]
 
-        for i, config_path in enumerate(config_paths):
+#         for i, config_path in enumerate(config_paths):
 
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
-            print("Loading simulation {} / {}\n\n".format(i, len(config_paths)))
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+#             print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
+#             print("Loading simulation {} / {}\n\n".format(i, len(config_paths)))
+#             print("+++++++++++++++++++++++++++++++++++++++++++++++++")
 
-            # Get the simulation parameters from the config.
-            config = Config(config_path)
-            field = config.eventbuilder.main_field
-            trap_current = config.eventbuilder.trap_current
-            print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
-            results = sim.Results.load(config_path)
-            tracks = results.dmtracks
-            tracks["simulation_num"] = i
-            tracks["field"] = field
-            tracks["trap_current"] = trap_current
-            tracks_list.append(tracks)
+#             # Get the simulation parameters from the config.
+#             config = Config(config_path)
+#             field = config.eventbuilder.main_field
+#             trap_current = config.eventbuilder.trap_current
+#             print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
+#             results = sim.Results.load(config_path)
+#             tracks = results.dmtracks
+#             tracks["simulation_num"] = i
+#             tracks["field"] = field
+#             tracks["trap_current"] = trap_current
+#             tracks_list.append(tracks)
 
-            if include_sampled_gammas: 
-                # Get the betas that were sampled during the simulation.
-                beta_source_ne19 = source.BetaSource(config)
-                sampled_energies = beta_source_ne19.energy_array[: int(beta_num)]
-                sampled_gammas.append(sc.gamma(sampled_energies))
-                fields.append(field)
+#             if include_sampled_gammas: 
+#                 # Get the betas that were sampled during the simulation.
+#                 beta_source_ne19 = source.BetaSource(config)
+#                 sampled_energies = beta_source_ne19.energy_array[: int(beta_num)]
+#                 sampled_gammas.append(sc.gamma(sampled_energies))
+#                 fields.append(field)
 
-        if include_sampled_gammas:
-            exp_results_dict["sampled_gammas"] = pd.DataFrame.from_dict(
-                dict(zip(fields, sampled_gammas))
-            )
-        exp_results_dict["experiment_results"] = pd.concat(tracks_list)
+#         if include_sampled_gammas:
+#             exp_results_dict["sampled_gammas"] = pd.DataFrame.from_dict(
+#                 dict(zip(fields, sampled_gammas))
+#             )
+#         exp_results_dict["experiment_results"] = pd.concat(tracks_list)
 
-        exp_results = cls(
-            exp_results_dict["experiment_params"],
-            exp_results_dict["base_config"],
-            exp_results_dict["config_paths"],
-            exp_results_dict["sampled_gammas"],
-            exp_results_dict["experiment_results"],
-        )
+#         exp_results = cls(
+#             exp_results_dict["experiment_params"],
+#             exp_results_dict["base_config"],
+#             exp_results_dict["config_paths"],
+#             exp_results_dict["sampled_gammas"],
+#             exp_results_dict["experiment_results"],
+#         )
 
-        return exp_results
+#         return exp_results
