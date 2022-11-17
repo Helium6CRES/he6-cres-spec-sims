@@ -1,5 +1,5 @@
 
-<p align="center"><img width="15%" src="/demo/readme_imgs/he6-cres_logo.png" /></p>
+<p align="center"><img width="35%" src="/demo/readme_imgs/he6-cres_logo.png" /></p>
 
 --------------------------------------------------------------------------------
 # he6_cres_spec_sims
