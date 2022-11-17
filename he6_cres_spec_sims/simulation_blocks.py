@@ -45,11 +45,11 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from time import process_time
 
-from daq.frequency_domain_packet import FDpacket
-from spec_tools.trap_field_profile import TrapFieldProfile
-from spec_tools.beta_source.beta_source import BetaSource
-import spec_tools.spec_calc.spec_calc as sc
-import spec_tools.spec_calc.power_calc as pc
+from he6_cres_spec_sims.daq.frequency_domain_packet import FDpacket
+from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
+from he6_cres_spec_sims.spec_tools.beta_source.beta_source import BetaSource
+import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
 
 # TODO: Make the seed a config parameter, and pass rng(seed) around.
 

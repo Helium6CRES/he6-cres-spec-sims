@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import typing
 
-import experiment as exp
+import he6_cres_spec_sims.experiment as exp
 
 class SimulationResults:
 

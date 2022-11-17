@@ -12,8 +12,8 @@ import yaml
 from . import simulation as sim
 from .simulation_blocks import Config
 # from .spec_tools import beta_source as source
-import spec_tools.beta_source.beta_source as source
-import spec_tools.spec_calc.spec_calc as sc
+import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
+import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> pathlib.Path:
