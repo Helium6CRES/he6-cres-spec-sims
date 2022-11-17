@@ -1,7 +1,7 @@
 import numpy as np
 
 # Local modules.
-from beta_spectrum import BetaSpectrum
+from .beta_spectrum import BetaSpectrum
 import spec_tools.spec_calc.spec_calc as sc
 
 ME = 5.10998950e5  # Electron rest mass (eV).
