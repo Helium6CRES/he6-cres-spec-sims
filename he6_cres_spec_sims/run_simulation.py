@@ -37,14 +37,15 @@ def main():
 
 def run_simulation(sim_config_path):
 
-    get_pst_time()
+    print(f"START. Current (PST) time: {get_pst_time()}")
     print(f"\n\n\n Beginning simulation. Path: {sim_config_path} \n\n\n")
 
     simulation = sim.Simulation(Path(sim_config_path))
     simulation.run_full()
 
     print(f"\n\n\n Done running simulation. Path: {sim_config_path}\n\n\n")
-
+    print(f"END. Current (PST) time: {get_pst_time()}")
+    
     return None
 
 # Utility.
