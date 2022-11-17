@@ -98,130 +98,17 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ## To Dos (11/17/22): 
 
-* 1006: One last time through the entire thing, on rocks and local. Making sure all the imports work. 
+* Work on making a visual readme. Get some demos of the functionality. 
 * Note somewhere that the logs should be deleted every once in a while. 
-
-## Notes as I build out the ability to run these simulations on rocks: 
-
-
-* Get set up: 
-	* Log on to rocks. 
-	* `cd /data/eliza4/he6_cres/simulation/he6-cres-spec-sims`
-	* Note: May need to upgrade pip. 
-		* For Winston and I this worked: `pip3 install --upgrade pip`
-		* For Heather the above didn't work and she needed to do the following: 
-	* `pip3 install -r requirements.txt`
-
-* Step 0: Getting an experiment running on rocks using qrsh: 
-	* THIS WORKS. ON TO STEP 1
-	* `qrsh`
-	* `cd /data/eliza4/he6_cres/simulation`
-	* `./he6-cres-spec-sims/he6_cres_spec_sims/run_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.txt"`
-	* Notes: 	
-		* There is an example config file in the `he6-cres-spec-sims` repo under `config_files`. Copy that over under the experiments dir because the results will be written in the same directory that the config file you point to is. 
-
-* Step 1: 
-	* Getting each field sent to a different node. 
-	* THIS WORKS ON TO STEP 2
-	* `cd /data/eliza4/he6_cres/simulation`
-	* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.txt"`
-
-* Step 2: 
-	* Simplest way to further parrelelize the simulations. Just call the simulation config again and again? How would that work?
-
-	* 11/10/22: 
-		* Working through this. Trying to make a simulation call an executable so that I can submit it as a job. This means the permissions have to be right. Make something an executable with this: 
-			* `sudo chmod +x filename.py`
-		* Trying to get the rocks experiment working here locally before porting it onto rocks. If this works I should be somewhat close. Maybe. 
-		* Ok this seems to be working now. Nice. Next step is to get the qsub job submission working on rocks. Then need to think about how to clean up things if chunking up even further.  
-			* This command works locally: 
-				* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/experiments/test_experiment_11082022.txt"`
-		* Trying the following command on rocks: 
-			* `./he6-cres-spec-sims/he6_cres_spec_sims/run_rocks_experiment.py -exp "/data/eliza4/he6_cres/simulation/sim_results/experiments/exp_demo_nov2022.txt"`
-
-	* It's working on a single node. 
-	* Work on an run_experiment_rocks.py (rename other one) file to send out a bunch of different jobs to different nodes. One field per node.
-	* Make logging output sensible with timestamps.
-	* Test the limit of this method. How fast and how many betas will work?
-	* do we need a clean-up?
-* Step 2: 
-	* How to chunk this up? Just run a few different experiments with different names ("\_0") and then write a clean-up script to combine them all into one. 
-
-
-## Random Useful: 
-* How to copy over my base config from local machine to rocks: 
-	* `sudo scp /media/drew/T7 Shield/spec_sims_results/experiments/base_config_10202022.yaml drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments/`
-	* This isn't working. Not sure why. 
-
-
-## To Do List: 
-
-* Get the output to be a bit cleaner. Right now it gives 5 different csvs but really the dmtracks contains all the info doesn't it?
-* Want to have clear instructions for running an experiment locally and running an experiment on rocks. And for how to analyze the results. 
-* The name of the experiment doesn't match the name of the .txt which is a little annoying. Should make that the way it works. (on rocks)
-* The output to the log will be too damn much rn. Need an option to run in debug mode or something?
-
-* 11/15/22: 
-	* Error when running 1e6 betas. 
-		* return self.bs.energy_array[beta_num]IndexError: index 1000000 is out of bounds for axis 0 with size 1000000.
-	* Maybe just rerun everything as is then put a sim_index col when combining everything? That may be easier to impliment and keep track of in the immediate. 
-	* Make the .txt into a json? That may be easier for people to understand the format of in terms of it being a dictionary? 
-	* Should I add a date in the logs somewhere? Or even in the name of the experiment?
-	* Get rid of sim_ in the rocks dictionaries as this is redundant and makes navigation harder. 
-	* Maybe a directory should be made for all the logs associated with a given experiment, this would be better I think. 
-
-	* AFTER BREAKFAST: 
-		* First get cleanup working to first order.
-		* Why are print statements in the logs not matching my new code? May need to hard reset the remote?
-		* Get things working to first order by the end of the next block. Keep with the 45 minute chunks. 
-	* How to clean up??
-		* Ok how to actually do this? I need to consider this carefully. Should I make the clean-up more complex and make it match what the data class wants or make the data class different to accomadate this? 
-			* Hmm. It almost seems easier to do in the data class BUT what if it was 20 different directories. It's clunky not to combine those. 
-		* Ok also right now each one of these is an exact copy of the rest as I'm not changing the seeds at all... That's an issue. 
-
-	* Current approach. Commit to it then see how it works: 
-		* I make the base experiment plus some number of copies. The base has no subscript. 
-		* Then I go through and add the contents of the copies dmtracks to the original one by globbing through the different directories. 
-			* Be sure to add a `exp_copy` col or something to the dmtracks df. 
-		* Then copy to my local comp and make sure the experiment class still works. Edit as needed. 
-		* Stay with it, you got this. 
-	* **For tomorrow:** 
-		* Work on getting the exp dict copied to a local machine (reuse the rocks analysis code), and make sure the output makes sense and everything. Then need to go on to cleaning and commenting everthing. 
-		* Get this project to the DONE point.
-	* **For today (11/15/22)**: 
-		* Have tested the local and remote versions of the simulation run and the results visualizations by this evening. 
-	* **After breakfast**: 
-		* Go through an entire rocks experiment and document here as you go -> Making the instructions as you go. 
-		* Then go through an entire local experiment and do the same. 
-		* Then try to get some nice visualizations in the readme. 
-		* Then work on cleaning things up and docstrings. 
-		* Head up. This is worth doing and worth doing well. You're doing great. But need to stay with it. 
-	* **START HERE! After lunch**: 
-		 
-		* Get rid of the other stuff besides tracks. It's simpler like this. Make the experiment dir behave this way as well.
-		* See if things break when you crank up the number of simulations/ number of betas simulated. 
-		* Put demo .ipynb in the repo. Make one for a local experiment and a rocks experiment. 
-		* Keep going with the readme for the local experiment.
-		* Should I put scatter in the experiment data class? Because rn I need a different version of that for the local stuff. Yes need to make this work better. Or maybe honestly don't bother because the local experiments are less important? 
-
-	* **After lunch**: 
-		* Ok so it seems like the importing of he6specsims as a pypi package may be making my local imports fail in a way I can't detect in rocks. This is annoying af and needs to be addressed asap because I can't even really tell what's being changed on rocks...
-			* For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this. 
-	* **For tomorrow**: 
-		* Import issues. It seems like the convention that is necessary on rocks is different than what's necessary locally. This is annoying af. Try to remedy this asap and get it working through the entire process. I thought I understood... 
-			* Need it tow work here as well: http://localhost:8888/lab/tree/He6CRES/he6sim_dev/he6sim_rocks_dev_11152022.ipynb
-		* Then go on to make the instructions for a local simulation experiment. 
-		* Then clean up the readme. add nice pictures. 
-		* Then go and make sure the katydid on rocks works still after changing the spec sims... Need that to work.. Then work on getting that readme up to snuff. You can do it. Forget about everything else. Make these two readmes work! That is a big accomplishment this week. 
-
-	* **11/17/22:**
-		* After first break: 
-			* Finish up with the local instuctions and demo. 
-			* Then work on getting the run_rocks_exp working in the upper directory. That follows a better pattern. 
+* Clean up the code and make docstrings! You got this. 
+* Merge this branch into develop. 
+* Test a rocks run with a lot of stats to see what breaks.
+* Then move on to making sure that katydid on rocks still works without the pip install. For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this
 
 
 ## Done List: 
-* Change naming conventions so they make more sense.
+* A lot. 
+
 
 ## Imports!
 
