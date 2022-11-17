@@ -7,7 +7,7 @@ from shutil import rmtree
 from glob import glob
 import pandas as pd
 
-
+sys.path.append("/data/eliza4/he6_cres/simulation/he6-cres-spec-sims")
 # Local imports.
 import he6_cres_spec_sims.rocks_experiment as exp
 
