@@ -127,9 +127,9 @@ class Results:
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
-            # 11/15/22: Commenting out these other outputs to make the 
+            # 11/15/22: Not writing these other outputs to make the 
             # simulations more lightweight. 
-            if data_name = "dmtracks":
+            if data_name == "dmtracks":
                 try:
                     data.to_csv(results_dir / "{}.csv".format(data_name))
                 except Exception as e:
