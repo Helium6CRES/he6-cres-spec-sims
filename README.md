@@ -118,7 +118,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 #### Description:
 
-The most basic function of the simulation package is to simulate betas in a given trap depth and main field. An "experiment" is a set of individual simulations run together with organized output. This makes it easy to simulate something closely resembling our experiments; detecting betas at a range of trap depths and main field values. The `.json` experiment config serves as the instructions for which simulations to run in the experiment.     
+The most basic function of the simulation package is to simulate betas in a given trap depth and main field. An "experiment" is a set of individual simulations run together with organized output. This makes it easy to simulate something closely resembling our experiments; running at a range of trap depths and main field values. The `.json` experiment config serves as the instructions for which simulations to run in the experiment.     
 One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`. Note that the name the experiment directory is assigned is the name of the `.json` experiment config file. 
 
 #### An example of it's contents: 
@@ -136,15 +136,23 @@ One can find an example of this config file here: `/he6-cres-spec-sims/config_fi
 
 #### Explanation of the required fields:
 
-experiment_copies: 
-experiment_name: 
-base_config_path: 
-isotope: 
-events_to_simulate: 
-betas_to_simulate: 
-rand_seeds: 
-fields_T:
-traps_A: 
+* **experiment_copies:** 
+	* Number of copies to be run of the experiment. This field must be omitted if running locally. When running on the cluster the simulations are parallelized such that each field specified in each copy is sent to a different node. So for example if the `.json` config had these attributes: `{"experiment_copies": 5, "beta_num": 1000, "fields_T": [1.0, 2.0, 3.0]}`, then 5 copies x 3 fields = 15 nodes would each simulate 1000 betas. Then the clean-up phase would combine these all into a directory whose name matches the `.json` config name.  
+
+* **base_config_path:**
+	* Full path to the base_config. See instructions above for details on where to put the base config. See documentation below for the required fields of the base config. 
+* **isotope:**
+	* Which isotope to simulate. Currently only works for "Ne19" and "He6" but could easily be extended to other isotopes. 
+* **events_to_simulate:** 
+	* Number of *trapped events* to simulate. When not set to -1 the simulation will terminate when events_to_simulate betas have been trapped. If set to -1 then the simulation will be terminated once betas_to_simulate have been simulated (trapped or not). One of events_to_simulate or betas_to_simulate should be -1. 
+* **betas_to_simulate:** 
+	* Number of betas simulated per experiment. See description of events_to_simulate above for details. 
+* **rand_seeds:** 
+	* List of ints used as the random seed in a simulation; one for each simulation to be run. The lists rand_seeds, fields_T, and traps_A, must all have the same length. 
+* **fields_T:**
+	* List of magnetic fields to simulate in Tesla. The lists rand_seeds, fields_T, and traps_A, must all have the same length. 
+* **traps_A:** 
+	* List of trap currents to simulate in Amps. The lists rand_seeds, fields_T, and traps_A, must all have the same length. 
 
 #### To build your own `.json` config: 
 
