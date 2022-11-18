@@ -122,7 +122,7 @@ One can find an example of this config file here: `/he6-cres-spec-sims/config_fi
 
 {"experiment_copies": 3, "experiment_name": "defaults to .json name", "base_config_path": "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_base_config_example.yaml", "isotope": "He6", "events_to_simulate": -1, "betas_to_simulate": 1e2, "rand_seeds": [4062, 3759, 3456, 3153, 2850, 2547, 2244, 1941, 1638, 1335, 1032], "fields_T": [3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75], "traps_A": [1.8, 1.661538, 1.523077, 1.384615, 1.246154, 1.107692, 0.969231, 0.830769, 0.692308, 0.553846, 0.4153845]}
 
-#### Explanation of the fields it must contain:
+#### Explanation of the required fields:
 
 experiment_copies: 
 experiment_name: 
@@ -134,8 +134,10 @@ rand_seeds:
 fields_T:
 traps_A: 
 
-#### To build your own given a query from he6-cres database: 
+#### To build your .json config: 
 
+* Query the he6-cres database to get real experiment conditions. 
+* Build a dictionary: `my_exp_dict` that contains all required fields
 * `import json`
 * `json.dump(my_exp_dict, 'path_to_exp_dict.json')`
 
