@@ -118,11 +118,11 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`
 
-####An example of it's contents: 
+#### An example of it's contents: 
 
 {"experiment_copies": 3, "experiment_name": "defaults to .json name", "base_config_path": "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_base_config_example.yaml", "isotope": "He6", "events_to_simulate": -1, "betas_to_simulate": 1e2, "rand_seeds": [4062, 3759, 3456, 3153, 2850, 2547, 2244, 1941, 1638, 1335, 1032], "fields_T": [3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75], "traps_A": [1.8, 1.661538, 1.523077, 1.384615, 1.246154, 1.107692, 0.969231, 0.830769, 0.692308, 0.553846, 0.4153845]}
 
-####Explanation of the fields it must contain:
+#### Explanation of the fields it must contain:
 
 experiment_copies: 
 experiment_name: 
@@ -134,19 +134,88 @@ rand_seeds:
 fields_T:
 traps_A: 
 
+#### To build your own given a query from he6-cres database: 
+
+* `import json`
+* `json.dump(my_exp_dict, 'path_to_exp_dict.json')`
+
 --------------------------------------------------------------------------------
 
 ### Base config (.yaml)
 
-One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`
+One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_base_config_example.yaml`
 
+#### Explanation of the fields it must contain:
 
+Settings: 
+    rand_seed: 234
 
+Physics:
+    events_to_simulate : "inf"
+    betas_to_simulate : 100
+    energy_spectrum: 
+        beta_source: "Ne19"
+    freq_acceptance_high: 18.0e+9
+    freq_acceptance_low: 19.1e+9
+    min_rho : 0.0
+    max_rho : 5.78e-3
+    min_z : -2.5e-3
+    max_z : 2.5e-3
+    min_theta : 89.0
+    max_theta : 90.0
+
+EventBuilder:
+    main_field : 1.700468
+    trap_current : .1
+    decay_cell_radius : 5.78e-3
+
+SegmentBuilder: 
+    mean_track_length : 10.0e-3
+    jump_size_eV : 14
+    jump_std_eV : 5
+    pitch_angle_costheta_std : 0.0
+    jump_num_max : 0
+
+BandBuilder: 
+    sideband_num: 1
+    frac_total_segment_power_cut : 0.01
+    harmonic_sidebands: True
+    magnetic_modulation: False 
+
+TrackBuilder:
+    run_length: 60.0e-6
+
+DMTrackBuilder:
+    mixer_freq: 17.9e+9
+
+Daq:
+    daq_freqbw: 1.2e+9
+    freq_bins: 32768
+    fft_per_slice: 2
+    band_power_override: 1.0e-16
+    gain_override: 1.0
+    
+SpecBuilder:
+    specfile_name: "example_spec_file"
 
 --------------------------------------------------------------------------------
-## Documentation for simulation config files: 
+## Documentation for tracks output: 
 
+List of all columns output by simulations: 
 
+['energy', 'gamma', 'energy_stop', 'initial_rho_pos', 'initial_phi_pos',
+       'initial_zpos', 'initial_theta', 'cos_initial_theta', 'initial_phi_dir',
+       'center_theta', 'cos_center_theta', 'initial_field', 'initial_radius',
+       'center_x', 'center_y', 'rho_center', 'trapped_initial_theta',
+       'max_radius', 'min_radius', 'avg_cycl_freq', 'b_avg', 'freq_stop',
+       'zmax', 'axial_freq', 'mod_index', 'segment_power', 'slope',
+       'segment_length', 'band_power', 'band_num', 'segment_num', 'event_num',
+       'beta_num', 'fraction_of_spectrum', 'energy_accept_high',
+       'energy_accept_low', 'gamma_accept_high', 'gamma_accept_low',
+       'time_start', 'time_stop', 'freq_start', 'exp_copy', 'simulation_num',
+       'field', 'trap_current'] 
+
+TODO: Fill in the above. 
 
 --------------------------------------------------------------------------------
 
