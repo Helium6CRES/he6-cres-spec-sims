@@ -158,48 +158,48 @@ One can find an example of this config file here: `/he6-cres-spec-sims/config_fi
 
 #### An example of it's contents:
 
-Settings:   
-    rand_seed: 234  
-Physics:  
-    events_to_simulate : "inf"  
-    betas_to_simulate : 100  
-    energy_spectrum:   
-        beta_source: "Ne19"  
-    freq_acceptance_high: 18.0e+9  
-    freq_acceptance_low: 19.1e+9  
-    min_rho : 0.0  
-    max_rho : 5.78e-3  
-    min_z : -2.5e-3  
-    max_z : 2.5e-3  
-    min_theta : 89.0  
-    max_theta : 90.0  
-EventBuilder:  
-    main_field : 1.700468  
-    trap_current : .1  
-    decay_cell_radius : 5.78e-3  
-SegmentBuilder:   
-    mean_track_length : 10.0e-3  
-    jump_size_eV : 14  
-    jump_std_eV : 5  
-    pitch_angle_costheta_std : 0.0  
-    jump_num_max : 0  
-BandBuilder:   
-    sideband_num: 1  
-    frac_total_segment_power_cut : 0.01  
-    harmonic_sidebands: True  
-    magnetic_modulation: False   
-TrackBuilder:  
-    run_length: 60.0e-6  
-DMTrackBuilder:  
-    mixer_freq: 17.9e+9  
-Daq:  
-    daq_freqbw: 1.2e+9  
-    freq_bins: 32768  
-    fft_per_slice: 2  
-    band_power_override: 1.0e-16  
-    gain_override: 1.0  
-SpecBuilder:  
-    specfile_name: "example_spec_file"  
+**Settings:**   
+* rand_seed: 234  
+**Physics:** 
+* events_to_simulate : "inf"  
+* betas_to_simulate : 100  
+* energy_spectrum:   
+    * beta_source: "Ne19"  
+* freq_acceptance_high: 18.0e+9  
+* freq_acceptance_low: 19.1e+9  
+* min_rho : 0.0  
+* max_rho : 5.78e-3  
+* min_z : -2.5e-3  
+* max_z : 2.5e-3  
+* min_theta : 89.0  
+* max_theta : 90.0  
+**EventBuilder:**  
+* main_field : 1.700468  
+* trap_current : .1  
+* decay_cell_radius : 5.78e-3  
+**SegmentBuilder:**  
+* mean_track_length : 10.0e-3  
+* jump_size_eV : 14  
+* jump_std_eV : 5  
+* pitch_angle_costheta_std : 0.0  
+* jump_num_max : 0  
+**BandBuilder:**   
+* sideband_num: 1  
+* frac_total_segment_power_cut : 0.01  
+* harmonic_sidebands: True  
+* magnetic_modulation: False   
+**TrackBuilder:**  
+* run_length: 60.0e-6  
+**DMTrackBuilder:**  
+* mixer_freq: 17.9e+9  
+**Daq:**  
+* daq_freqbw: 1.2e+9  
+* freq_bins: 32768  
+* fft_per_slice: 2  
+* band_power_override: 1.0e-16  
+* gain_override: 1.0  
+**SpecBuilder:**  
+* specfile_name: "example_spec_file"  
 
 #### Explanation of the required fields:
 --------------------------------------------------------------------------------
