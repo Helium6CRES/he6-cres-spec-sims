@@ -14,3 +14,4 @@ scikit-learn>=1.0.1
 natsort>=7.0.1
 pytz>=2022.4
 mpmath>=1.1.0
+matplotlib>=3.5.0

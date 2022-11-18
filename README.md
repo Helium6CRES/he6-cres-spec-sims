@@ -21,7 +21,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 	* *Instructions:* 
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/`
-		* `pip3 install -r he6-cres-spec-sims/requirements.txt` 
+		* `pip3 install -r he6-cres-spec-sims/requirements.txt --user` 
 	* *Notes:*
 		* May need to upgrade pip for the above to work on rocks. 
 			* For Winston and I this worked: `pip3 install --upgrade pip`	
@@ -284,19 +284,21 @@ Below is a description for all of the features output by the simulations. One ca
 * In case of emergency please break the glass. No actually just email me at wbyron@uw.edu. 
 * The `develop` branch is tested and working on rocks and locally as of 11/16/22.
 
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-## To Dos (11/16/22): 
+# Development in Progress: 
 
-* Clean up the code and make docstrings! You got this. 
+## To Dos (11/18/22): 
+
+* Make docstrings for all modules/methods! 
 * Test a rocks run with a lot of stats to see what breaks.
 * Work on documenting the modules (quickly) with docstrings. 
 * Then move on to making sure that katydid on rocks still works without the pip install. For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this
 
 
-## Done List: 
-* Merge this branch into develop. 
+## Tests: 
 
-
-## Imports!
-
-* Ok so generally I'm doing things right but things get wierd when you try to run a script inside your package. That generally causes issues. So try to get run_rocks_exp also working outside of the package. 
+* Testing 1e4 betas for 11 fields with 10 copies at 8:49 AM 11/18/22.
+	* This worked. We get some betas that fail in that the b_avg is zero, so the integral must fail. Though it resulted in over 5 million rows and 45 columns. 

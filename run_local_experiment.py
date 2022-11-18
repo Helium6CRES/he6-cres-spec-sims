@@ -4,18 +4,21 @@ import sys
 import argparse
 from pathlib import Path
 
-# Local imports.
-# from . import experiment as exp
-# Path to local imports.
-# sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
-
 import he6_cres_spec_sims.experiment as exp
 
 
 def main():
     """
-    DOCUMENT
+    A script for running an experiment based on a dictionary input (in 
+    the form of a json file). See 
+    `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json` for 
+    an example of what it needs to contain. 
 
+    Args:
+        local_dir (str): where to put experiment results. Ideally on a 
+            harddrive.  
+        sim_exp_name (str): name of the experiment (identical to name of 
+            .json that defines experiment).
     """
 
     # Parse command line arguments.
