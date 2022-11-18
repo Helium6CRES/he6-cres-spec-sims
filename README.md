@@ -7,13 +7,14 @@
 A package for simulating cres experiments over a variety of magnetic field values.
 
 --------------------------------------------------------------------------------
-### Make interactive plots of simulated cres track features!
+### Simulate an experiment then make interactive plots of cres track features!
 
 <p align="center"><img width="40%" src="/demo/readme_imgs/plot_stuff.png" />              <img width="50%" src="/demo/readme_imgs/make_plot.png" /></p>
 
 <p align="center"><img width="40%" src="/demo/readme_imgs/plot_stuff_1.png" />              <img width="50%" src="/demo/readme_imgs/make_plot_1.png" /></p>
 
 --------------------------------------------------------------------------------
+
 ## Instructions for running simulations on CENPA cluster (rocks): 
 
 * **Get dependencies**: 
@@ -33,7 +34,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* Log on to rocks. 
 		* `cd /data/eliza4/he6_cres/simulation/he6-cres-spec-sims`
 		* Set up: 
-			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in the following directory on rocks: `/data/eliza4/he6_cres/simulation/sim_results/experiments/`. See (TODO WHERE TO DOCUMENT THIS) somewhere for more details on what these two config files must contain. 
+			* Before running an experiment one needs a `.json` experiment config and a `.yaml` base config to both be in the following directory on rocks: `/data/eliza4/he6_cres/simulation/sim_results/experiments/`. (TODO: Document the config files and the output fields.)
 			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
 				* `!scp /home/drew/He6CRES/he6-cres-spec-sims/config_files/rocks* drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
 		* Initial run: 
@@ -45,9 +46,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* `-exp` (str): Specify the path to the json file that contains the specific attributes (in the form of a python dictionary) of the simulated experiment. See the docstring for the `run_rocks_experiment.py` module for a complete description of all attributes that the `.json` must contain.
 			* Say one made a `.json` experiment config locally based on some queries to the he6 postgreSQL database. You could copy that to the rocks `sim_results/experiments` directory with a command like this: 
 				* `!scp /media/drew/T7\ Shield/spec_sims_results/rocks_experiments/exp_demo_nov2022.json drewbyron@172.25.100.1:/data/eliza4/he6_cres/simulation/sim_results/experiments`
-			* Here `experiment_copies` number of independent (unique random seeds) but otherwise identical experiments are run over rocks. The experiment attribute `experiment_copies` is specified in the `.json` config file. It is parallelized such that each field specified in each copy is sent to a different node. So for example if the `.json` config had these attributes: `{"experiment_copies": 5, "beta_num": 1000, "fields_T": [1.0, 2.0, 3.0]}`, then 5 copies x 3 fields = 15 nodes would each simulate 1000 betas. 
-			* There needs to be a base config file in the `/sim_results/experiments` directory that the `.json` config file points to. One can copy a local `.yaml` file over from your local machine with a command like this: 
-				* TODO: FILL THIS IN. ALSO put all the base components necessary along with a demo in the repo somewhere.  
+			* Here `experiment_copies` number of independent (unique random seeds) but otherwise identical experiments are run over rocks. The experiment attribute `experiment_copies` is specified in the `.json` config file. It is parallelized such that each field specified in each copy is sent to a different node. So for example if the `.json` config had these attributes: `{"experiment_copies": 5, "beta_num": 1000, "fields_T": [1.0, 2.0, 3.0]}`, then 5 copies x 3 fields = 15 nodes would each simulate 1000 betas.   
 		* Clean up:
 			* In the clean-up phase the different copies of the experiment that are produced by the run are combined into one directory that can then be copied onto a local machine for analysis. 
 			* In the example used above where we have 5 copies of an experiment spanning 3 fields each with 1000 betas simulated, all of the resultant `.csvs` containing track info for the 5 copies is combined into one directory. 
@@ -67,12 +66,14 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* *Notes:*
 			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/rocks_sim_experiment_demo.ipynb`.
 
+--------------------------------------------------------------------------------
+
 ## Instructions for running simulations locally: 
 
 * **Get dependencies**: 
 	* *Instructions:* 
 		* Navigate into desired parent directory.
-		* Clone the repo, or `git pull` if you already have it. A hard reset to the remote may be necessary if you have an old version. (NEED THE DEV BRNACH TO BE WORKING.)  
+		* Clone the repo, or `git pull` if you already have it. A hard reset to the remote may be necessary if you have an old version. You should be on the `develop` branch (default).  
 			* `git clone git@github.com:Helium6CRES/he6-cres-spec-sims.git`
 		* `pip3 install -r he6-cres-spec-sims/requirements.txt` 
 	* *Notes:*
@@ -87,7 +88,7 @@ A package for simulating cres experiments over a variety of magnetic field value
 				* `cp /home/drew/He6CRES/he6-cres-spec-sims/config_files/local* /media/drew/T7\ Shield/spec_sims_results/local_experiments`
 			* The `base_config_path` field in the `.json` experiment config needs to be manually changed to point at the `.yaml` base config file. Change this path. 
 		* Run experiment: 
-			* `./he6-cres-spec-sims/run_local_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json"`
+			* `./run_local_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json"`
 
 	* *Notes:*
 		* Run experiment:
@@ -107,24 +108,66 @@ A package for simulating cres experiments over a variety of magnetic field value
 		* *Notes:*
 			* See the demo notebook for a full illustration of the above: `he6-cres-spec-sims/demo/local_sim_experiment_demo.ipynb`.
 
+--------------------------------------------------------------------------------
 
-## In case of : 
+## Documentation for simulation config files: 
 
-* 
+--------------------------------------------------------------------------------
+
+### Experiment config (.json)
+
+One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`
+
+####An example of it's contents: 
+
+{"experiment_copies": 3, "experiment_name": "defaults to .json name", "base_config_path": "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_base_config_example.yaml", "isotope": "He6", "events_to_simulate": -1, "betas_to_simulate": 1e2, "rand_seeds": [4062, 3759, 3456, 3153, 2850, 2547, 2244, 1941, 1638, 1335, 1032], "fields_T": [3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75], "traps_A": [1.8, 1.661538, 1.523077, 1.384615, 1.246154, 1.107692, 0.969231, 0.830769, 0.692308, 0.553846, 0.4153845]}
+
+####Explanation of the fields it must contain:
+
+experiment_copies: 
+experiment_name: 
+base_config_path: 
+isotope: 
+events_to_simulate: 
+betas_to_simulate: 
+rand_seeds: 
+fields_T:
+traps_A: 
+
+--------------------------------------------------------------------------------
+
+### Base config (.yaml)
+
+One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`
 
 
-## To Dos (11/17/22): 
+
+
+--------------------------------------------------------------------------------
+## Documentation for simulation config files: 
+
+
+
+--------------------------------------------------------------------------------
+
+## Important notes: 
+
+* In case of emergency please break glass. No actually just email me at wbyron@uw.edu. 
+* The `develop` branch is tested and working on rocks and locally as of 11/16/22.
+
+
+## To Dos (11/16/22): 
 
 * Work on making a visual readme. Get some demos of the functionality. 
 * Note somewhere that  
 * Clean up the code and make docstrings! You got this. 
-* Merge this branch into develop. 
 * Test a rocks run with a lot of stats to see what breaks.
+* Work on documenting the modules (quickly) with docstrings. 
 * Then move on to making sure that katydid on rocks still works without the pip install. For now I am uninstalling the package with a pip uninstall. This will break katydid on rocks!! So I need to go fix that once I'm done with this
 
 
 ## Done List: 
-* A lot. 
+* Merge this branch into develop. 
 
 
 ## Imports!

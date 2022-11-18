@@ -13,10 +13,18 @@ import typing
 import he6_cres_spec_sims.experiment as exp
 
 class SimulationResults:
-
     """
-    Notes:
-    * Ok this should use the experiment class that's already written?
+    A class that enables one to copy experiment restults from rocks and 
+    organizes it into an easy to interact with pd.DataFrame. Also provides 
+    one utility function for plotting scatter plots of variables. See the
+    `/he6-cres-spec-sims/demo/rocks_sim_experiment_demo.ipynb` demo for 
+    a concrete example. 
+
+    Args:
+        local_dir (str): where to put experiment results. Ideally on a 
+            harddrive.  
+        sim_exp_name (str): name of the experiment (identical to name of 
+            .json that defines experiment).
     """
 
     def __init__(
