@@ -116,11 +116,20 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ### Experiment config (.json)
 
-One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`
+One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`. Note that the name the experiment directory is assigned is the name of the `.json` experiment config file. 
 
 #### An example of it's contents: 
 
-{"experiment_copies": 3, "experiment_name": "defaults to .json name", "base_config_path": "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_base_config_example.yaml", "isotope": "He6", "events_to_simulate": -1, "betas_to_simulate": 1e2, "rand_seeds": [4062, 3759, 3456, 3153, 2850, 2547, 2244, 1941, 1638, 1335, 1032], "fields_T": [3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75], "traps_A": [1.8, 1.661538, 1.523077, 1.384615, 1.246154, 1.107692, 0.969231, 0.830769, 0.692308, 0.553846, 0.4153845]}
+{
+"experiment_copies": 3,  
+"base_config_path": "/data/eliza4/he6_cres/simulation/sim_results/experiments/rocks_base_config_example.yaml", 
+"isotope": "He6", 
+"events_to_simulate": -1, 
+"betas_to_simulate": 1e2, 
+"rand_seeds": [4062, 3759, 3456, 3153, 2850, 2547, 2244, 1941, 1638, 1335, 1032], 
+"fields_T": [3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75], 
+"traps_A": [1.8, 1.661538, 1.523077, 1.384615, 1.246154, 1.107692, 0.969231, 0.830769, 0.692308, 0.553846, 0.4153845]
+}
 
 #### Explanation of the required fields:
 
@@ -203,34 +212,66 @@ SpecBuilder:
 --------------------------------------------------------------------------------
 ## Documentation for tracks output: 
 
-List of all columns output by simulations: 
+Below is a description for all of the features output by the simulations. One can find instructions for generating the `tracks` pd.Dataframe above for a local or cluster based simulation.   
 
-['energy', 'gamma', 'energy_stop', 'initial_rho_pos', 'initial_phi_pos',
-       'initial_zpos', 'initial_theta', 'cos_initial_theta', 'initial_phi_dir',
-       'center_theta', 'cos_center_theta', 'initial_field', 'initial_radius',
-       'center_x', 'center_y', 'rho_center', 'trapped_initial_theta',
-       'max_radius', 'min_radius', 'avg_cycl_freq', 'b_avg', 'freq_stop',
-       'zmax', 'axial_freq', 'mod_index', 'segment_power', 'slope',
-       'segment_length', 'band_power', 'band_num', 'segment_num', 'event_num',
-       'beta_num', 'fraction_of_spectrum', 'energy_accept_high',
-       'energy_accept_low', 'gamma_accept_high', 'gamma_accept_low',
-       'time_start', 'time_stop', 'freq_start', 'exp_copy', 'simulation_num',
-       'field', 'trap_current'] 
+[
+'energy':  
+'gamma', 
+'energy_stop', 
+'initial_rho_pos', 
+'initial_phi_pos',
+'initial_zpos', 
+'initial_theta', 
+'cos_initial_theta', 
+'initial_phi_dir',
+'center_theta', 
+'cos_center_theta', 
+'initial_field', 
+'initial_radius',
+'center_x', 
+'center_y', 
+'rho_center', 
+'trapped_initial_theta',
+'max_radius', 
+'min_radius', 
+'avg_cycl_freq', 
+'b_avg', 
+'freq_stop',
+'zmax', 
+'axial_freq', 
+'mod_index', 
+'segment_power', 
+'slope',
+'segment_length', 
+'band_power', 
+'band_num', 
+'segment_num', 
+'event_num',
+'beta_num', 
+'fraction_of_spectrum', 
+'energy_accept_high',
+'energy_accept_low', 
+'gamma_accept_high', 
+'gamma_accept_low',
+'time_start', 
+'time_stop', 
+'freq_start', 
+'exp_copy', 
+'simulation_num',
+'field', 
+'trap_current'] 
 
-TODO: Fill in the above. 
 
 --------------------------------------------------------------------------------
 
 ## Important notes: 
 
-* In case of emergency please break glass. No actually just email me at wbyron@uw.edu. 
+* In case of emergency please break the glass. No actually just email me at wbyron@uw.edu. 
 * The `develop` branch is tested and working on rocks and locally as of 11/16/22.
 
 
 ## To Dos (11/16/22): 
 
-* Work on making a visual readme. Get some demos of the functionality. 
-* Note somewhere that  
 * Clean up the code and make docstrings! You got this. 
 * Test a rocks run with a lot of stats to see what breaks.
 * Work on documenting the modules (quickly) with docstrings. 
