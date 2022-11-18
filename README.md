@@ -116,6 +116,9 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ### Experiment config (.json)
 
+#### Description:
+
+The most basic function of the simulation package is to simulate betas in a given trap depth and main field. An "experiment" is a set of individual simulations run together with organized output. This makes it easy to simulate something closely resembling our experiments; detecting betas at a range of trap depths and main field values. The `.json` experiment config serves as the instructions for which simulations to run in the experiment.     
 One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_exp_config_example.json`. Note that the name the experiment directory is assigned is the name of the `.json` experiment config file. 
 
 #### An example of it's contents: 
@@ -153,6 +156,10 @@ traps_A:
 --------------------------------------------------------------------------------
 
 ### Base config (.yaml)
+
+#### Description:
+
+The base configuration `.yaml` file contains the specific parameters to use for each "block" of an individual simulation. When running an experiment, certain settings are over-written (like the `betas_to_simulate`) by the `.json` experiment config. But the general settings defined in the `.yaml` base config are used across all fields and trap depths defined in the `.json` experiment config. 
 
 One can find an example of this config file here: `/he6-cres-spec-sims/config_files/rocks_base_config_example.yaml`
 
@@ -202,6 +209,13 @@ One can find an example of this config file here: `/he6-cres-spec-sims/config_fi
 	* specfile_name: "example_spec_file"  
 
 #### Explanation of the required fields:
+
+ FILL IN. 
+--------------------------------------------------------------------------------
+
+### Simulation Blocks
+
+FILL IN. Need descriptions of what each block of the simulation does. 
 --------------------------------------------------------------------------------
 ## Documentation for tracks output: 
 
