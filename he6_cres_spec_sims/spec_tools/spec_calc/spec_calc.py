@@ -55,6 +55,9 @@ def gamma(energy):
     gamma = (energy + ME) / ME
     return gamma
 
+def energy(gamma):
+    energy = ME*(gamma - 1)
+    return energy
 
 def momentum(energy):
     momentum = (((energy + ME) ** 2 - ME**2) / C**2) ** 0.5 / J_TO_EV
@@ -715,6 +718,19 @@ def power_larmor(field, frequency):
 
     omega = 2 * PI * frequency
     energy = freq_to_energy(frequency, field)
+    r_c = cyc_radius(energy, field, 90)
+    beta = velocity(energy) / C
+    p = gamma(energy) * M * velocity(energy)
+
+    power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
+        4 * PI * EPS_0 * r_c**2
+    )
+
+    return power_larmor
+
+def power_larmor_e(field, energy):
+    """Takes energy instead of frequency as input. """
+
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
     p = gamma(energy) * M * velocity(energy)

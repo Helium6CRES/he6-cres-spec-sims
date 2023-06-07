@@ -823,9 +823,8 @@ class DMTrackBuilder:
 
 class DAQ:
 
-    """TODO: Document
-    TODO: Add sphynx documentation style so that you can get automatic docs going.
-    This will make the project much easier to interact with.
+    """
+    Document.
 
     """
 

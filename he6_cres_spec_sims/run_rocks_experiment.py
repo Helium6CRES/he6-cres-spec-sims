@@ -194,36 +194,14 @@ def merge_csvs(exp_copies_dirs):
         print("\ntracks index: ", tracks_df.index)
         print("\ntracks cols: ", tracks_df.columns)
 
-    # print("this:/n", zip(*tracks_paths_lists))
-
-    # resultant_tracks_path = exp_dir / Path(f"dmtracks.csv")
-    # tracks_path_list = [edir / Path(f"dmtracks.csv") for edir in exp_copies_dirs]
-    # tracks_exist = [path.is_file() for path in tracks_path_list]
-
-    # print(tracks_path_list, tracks_exist)
-
-    # if not all(tracks_exist):
-    #     raise UserWarning(
-    #         f"{sum(tracks_exist)}/{len(tracks_exist)} track csvs are present."
-    #     )
-
-    # tracks_dfs = [
-    #     pd.read_csv(tracks_path, index_col=0) for tracks_path in tracks_path_list
-    # ]
-    # tracks_df = pd.concat(tracks_dfs, ignore_index=True)
-    # lens = [len(df) for df in tracks_dfs]
-    # print("\nCombining set of tracks_dfs.\n")
-    # print("lengths: ", lens)
-    # print("sum: ", sum(lens))
-    # print("len single file (sanity check): ", len(tracks_df))
-    # print("tracks index: ", tracks_df.index)
-    # print("tracks cols: ", tracks_df.columns)
-
-    # tracks_df.to_csv(resultant_tracks_path)
-    # events_df.to_csv(self.events_df_path)
-
     return None
 
+def set_permissions():
+
+    set_group = sp.run(["chgrp", "-R", "he6_cres", "katydid_analysis/"])
+    set_permission = sp.run(["chmod", "-R", "774", "katydid_analysis/"])
+
+    return None
 
 if __name__ == "__main__":
     main()
