@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 
+ME = 5.10998950e5  # Electron rest mass (eV).
+
 # ---------- Beta Spectrum class used in he6-cres-spec-sims ---------------
 
 
@@ -92,3 +94,50 @@ class BetaSpectrum:
         Add in the littleb distortion before you renormalize the spectrum.
         """
         return self.dNdE_unnormed_SM(W) * (1 + (self.b / W))
+
+
+    def energy_samples(self, n, E_start, E_stop, rand_seed):
+
+            """Produce n random samples from dNdE(E) between E_start and E_stop assuming constant spacing in Ws.
+            Also return the fraction of the entire spectrum this accounts for."""
+
+            rng = np.random.default_rng(rand_seed)
+
+            fraction_of_spectrum = None
+
+            W_start = (E_start + ME) / ME
+            W_stop = (E_stop + ME) / ME
+
+            if fraction_of_spectrum == None:
+                fraction_of_spectrum, norm_err = integrate.quad(
+                    self.dNdE,
+                    W_start,
+                    W_stop,
+                )
+
+            # Providing the pdf exactly 1 or Wmax leads to errors.
+            epsilon = 10**-6
+            energy_intervals = 10**5
+            Es = np.linspace(E_start + epsilon, E_stop - epsilon, energy_intervals)
+
+            Ws = (Es + ME) / ME
+            pdf = self.dNdE(Ws)
+
+            # get cumulative distribution from 0 to 1
+            cumpdf = np.cumsum(pdf)
+            cumpdf *= 1 / cumpdf[-1]
+
+            # input random values
+            randv = rng.uniform(size=n)
+
+            # find where random values would go
+            idx1 = np.searchsorted(cumpdf, randv)
+            # get previous value, avoiding division by zero below
+            idx0 = np.where(idx1 == 0, 0, idx1 - 1)
+            idx1[idx0 == 0] = 1
+
+            # do linear interpolation in x
+            frac1 = (randv - cumpdf[idx0]) / (cumpdf[idx1] - cumpdf[idx0])
+            energy_samples = Es[idx0] * (1 - frac1) + Es[idx1] * frac1
+
+            return energy_samples, fraction_of_spectrum
