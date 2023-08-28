@@ -299,10 +299,6 @@ class EventBuilder:
                 break
 
             else:
-
-                # trapped_event_df = trapped_event_df.append(
-                #     single_segment_df, ignore_index=True
-                # )
                 trapped_event_df = pd.concat([trapped_event_df, single_segment_df], ignore_index=True)
 
             event_num += 1
