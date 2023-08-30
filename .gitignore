@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 *.csv
 *.spec
+cres_specs_env/
 =======
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -299,10 +299,7 @@ class EventBuilder:
                 break
 
             else:
-
-                trapped_event_df = trapped_event_df.append(
-                    single_segment_df, ignore_index=True
-                )
+                trapped_event_df = pd.concat([trapped_event_df, single_segment_df], ignore_index=True)
 
             event_num += 1
         return trapped_event_df
@@ -601,6 +598,9 @@ class SegmentBuilder:
         energy_stop = (
             df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
         )
+
+        if energy_stop<0: energy_stop=1e-10
+
         freq_stop = sc.avg_cycl_freq(
             energy_stop, df["center_theta"], df["rho_center"], trap_profile
         )

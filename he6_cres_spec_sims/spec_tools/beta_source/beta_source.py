@@ -40,7 +40,7 @@ class BetaSource:
             self.source["beta_source"] == "He6"
         ):
             print("\nSource: {}\n".format(self.source["beta_source"]))
-            self.beta_spectrum = BetaSpectrum(self.isotopes[self.source["beta_source"]])
+            self.beta_spectrum = BetaSpectrum(self.source["beta_source"])
 
             self.make_energy_samples()
 

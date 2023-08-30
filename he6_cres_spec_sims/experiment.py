@@ -201,7 +201,7 @@ class ExpResults:
 
         # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
         # Note that if this is -1 then you get the entire array (event_mode).
-        beta_num = experiment_params["betas_to_simulate"]
+        beta_num = experiment_params["Physics"]["betas_to_simulate"]
 
         for i, config_path in enumerate(config_paths):
 
