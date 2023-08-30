@@ -598,6 +598,9 @@ class SegmentBuilder:
         energy_stop = (
             df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
         )
+
+        if energy_stop<0: energy_stop=1e-10
+
         freq_stop = sc.avg_cycl_freq(
             energy_stop, df["center_theta"], df["rho_center"], trap_profile
         )
