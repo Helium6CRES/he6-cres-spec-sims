@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 *.csv
 *.spec
 cres_specs_env/
-=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -11,4 +9,3 @@ __pycache__/
 # MacOS generated files #
 ######################
 .DS_Store
->>>>>>> feature/anharmonic
