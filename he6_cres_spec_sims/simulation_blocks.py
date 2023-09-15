@@ -44,6 +44,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from time import process_time
+from scipy import integrate
 
 from he6_cres_spec_sims.daq.frequency_domain_packet import FDpacket
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
@@ -227,6 +228,24 @@ class Physics:
         )
 
         return position, direction
+    
+    def number_of_events(self):
+        # determine number of events needed to simulate
+        # TODO: option to do this using empirical beta rate to cres rate function,
+        beta_rate = self.config.physics.beta_rate
+        # bs_norm = self.bs.beta_spectrum.dNdE_norm
+        # cres_ratio = integrate.quad(lambda x: self.bs.beta_spectrum.dNdE(x),
+        #                             sc.freq_to_energy(self.config.physics.freq_acceptance_low,
+        #                                                 self.config.eventbuilder.main_field),
+        #                             sc.freq_to_energy(self.config.physics.freq_acceptance_high,
+        #                                                 self.config.eventbuilder.main_field),
+        #                             epsrel=1e-6
+        #                             )[0]
+
+        cres_ratio = self.bs.fraction_of_spectrum
+        cres_rate = beta_rate*cres_ratio
+        return cres_rate*self.config.daq.n_files*self.config.daq.spec_length
+
 
 
 class EventBuilder:
@@ -246,13 +265,19 @@ class EventBuilder:
         # beta_num denotes the total number of betas produced in the trap.
         beta_num = 0
 
-        events_to_simulate = self.config.physics.events_to_simulate
-        betas_to_simulate = self.config.physics.betas_to_simulate
-
-        if events_to_simulate == -1:
-            events_to_simulate = np.inf
-        if betas_to_simulate == -1:
+        # if simulating full daq we instead use the beta monitor rate to determine the number of events we should be seeing
+        # currently this just takes an empirical cres/beta monitor rate.
+        if self.config.settings.sim_daq==True:
+            events_to_simulate = self.physics.number_of_events()
             betas_to_simulate = np.inf
+        else:
+            events_to_simulate = self.config.physics.events_to_simulate
+            betas_to_simulate = self.config.physics.betas_to_simulate
+
+            if events_to_simulate == -1:
+                events_to_simulate = np.inf
+            if betas_to_simulate == -1:
+                betas_to_simulate = np.inf
 
         print(
             f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}"
@@ -713,7 +738,8 @@ class TrackBuilder:
         # events_to_simulate = self.config.physics.events_to_simulate
         events_simulated = int(bands_df["event_num"].max() + 1)
         print("events simulated: ", events_simulated)
-        # TODO: Event timing is not currently physical.
+        # TODO: Event timing is not currently physical. 
+        # RJ: working on making this more physical, currently assuming beta monitor rate is equivalent to decay cell rate
         # Add time/freq start/stop.
         tracks_df = bands_df.copy()
         tracks_df["time_start"] = np.NaN
@@ -833,6 +859,7 @@ class DAQ:
         self.config = config
 
         # DAQ parameters derived from the config parameters.
+        print(config.daq.freq_bw, config.daq.freq_bins)
         self.delta_f = config.daq.freq_bw / config.daq.freq_bins
         self.delta_t = 1 / self.delta_f
         self.slice_time = self.delta_t * self.config.daq.roach_avg
@@ -874,6 +901,7 @@ class DAQ:
         """
         self.tracks = downmixed_tracks_df
         self.build_results_dir()
+        print(self.tracks.keys())
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
         self.build_spec_file_paths()
         self.build_empty_spec_files()

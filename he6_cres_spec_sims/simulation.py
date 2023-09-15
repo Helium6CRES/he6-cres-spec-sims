@@ -56,7 +56,8 @@ class Simulation:
         bandbuilder = sim_blocks.BandBuilder(self.config)
         trackbuilder = sim_blocks.TrackBuilder(self.config)
         dmtrackbuilder = sim_blocks.DMTrackBuilder(self.config)
-        daq = sim_blocks.Daq(self.config)
+        # daq = sim_blocks.Daq(self.config)
+        daq = sim_blocks.DAQ(self.config)
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
         events = eventbuilder.run()
@@ -87,7 +88,7 @@ class Simulation:
             raise e
 
         # Initialize all necessary simulation blocks.
-        daq = sim_blocks.Daq(self.config)
+        daq = sim_blocks.DAQ(self.config)
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
         # Simulate the action of the Daq on the loaded dmtracks.
