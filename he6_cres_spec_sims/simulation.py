@@ -58,7 +58,6 @@ class Simulation:
         dmtrackbuilder = sim_blocks.DMTrackBuilder(self.config)
         # daq = sim_blocks.Daq(self.config)
         daq = sim_blocks.DAQ(self.config)
-        specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
         events = eventbuilder.run()
         segments = segmentbuilder.run(events)
@@ -66,8 +65,7 @@ class Simulation:
         tracks = trackbuilder.run(bands)
         dmtracks = dmtrackbuilder.run(tracks)
         # Commenting out the following to make progress in other areas. 4/20/22
-        # spec_array = daq.run(dmtracks)
-        # specbuilder.run(spec_array)
+        spec_array = daq.run(dmtracks)
 
         # Save the results of the simulation:
         # For now as of 11/15/22 I am only writing dmtracks to keep things
