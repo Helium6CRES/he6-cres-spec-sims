@@ -266,7 +266,6 @@ class EventBuilder:
         beta_num = 0
 
         # if simulating full daq we instead use the beta monitor rate to determine the number of events we should be seeing
-        # currently this just takes an empirical cres/beta monitor rate.
         if self.config.settings.sim_daq==True:
             events_to_simulate = self.physics.number_of_events()
             betas_to_simulate = np.inf
@@ -744,6 +743,7 @@ class TrackBuilder:
         tracks_df = bands_df.copy()
         tracks_df["time_start"] = np.NaN
         tracks_df["time_stop"] = np.NaN
+        tracks_df["file_num"] = np.NaN
 
         tracks_df["freq_start"] = bands_df["avg_cycl_freq"]
         tracks_df["freq_stop"] = (
@@ -752,16 +752,17 @@ class TrackBuilder:
 
         # dealing with timing of the events.
         # for now just put all events in the window... need to think about this.
-        trapped_event_start_times = np.random.uniform(0, run_length, events_simulated)
+        window = self.config.daq.n_files*self.config.daq.spec_length
+        trapped_event_start_times = np.random.uniform(0, window, events_simulated)
 
         # iterate through the segment zeros and fill in start times.
-        # TODO: Add in a file num here.
 
         for index, row in bands_df[bands_df["segment_num"] == 0.0].iterrows():
             #             print(index)
             event_num = int(tracks_df["event_num"][index])
             #             print(event_num)
             tracks_df["time_start"][index] = trapped_event_start_times[event_num]
+            tracks_df["file_num"][index] = int(trapped_event_start_times[event_num] // self.config.daq.spec_length)
 
         for event in range(0, events_simulated):
 
