@@ -934,19 +934,22 @@ class DAQ:
 
                 noise_array = self.noise_array.copy()
                 self.rng.shuffle(noise_array)
-                noise_array = noise_array[: num_slices // 2]
+                noise_array = noise_array[: num_slices]
 
                 signal_array = self.build_signal_chunk(
                     file_in_acq, start_slice, stop_slice
                 )
 
-                # Account for mean = 1 gain, add base_gain, add noise.
+                requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**17)
+                print(np.shape(signal_array.T), np.shape(noise_array))
                 spec_array = (
-                    signal_array
-                    * self.config.daq.base_gain
+                    (signal_array.T
                     * self.gain_func(self.freq_axis)
-                    + noise_array
+                    + noise_array)**2
+                    * requant_gain_scaling
                 )
+
+                spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
                 self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
@@ -1108,10 +1111,9 @@ class DAQ:
                 : self.pts_per_fft // 2
             ]
 
-        signal_array = np.real(fft) ** 2
+        signal_array = np.real(fft)
 
-        # Average time slices and transpose the signal array so that it's shape is (slice, freq_bins)
-        signal_array = self.roach_slice_avg(signal_array.T, N=self.config.daq.roach_avg)
+        #can't average until we've added noise and gotten the powers. 
 
         return signal_array
 
@@ -1153,16 +1155,15 @@ class DAQ:
         delta_f_12 = 2.4e9 / 2**13
 
         noise_power_scaling = self.delta_f / delta_f_12
-        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**17)
-        noise_scaling = noise_power_scaling * requant_gain_scaling
+        noise_scaling = noise_power_scaling
 
         # Chisquared noise:
         noise_array = self.rng.chisquare(
-            df=2, size=(self.slice_block, self.config.daq.freq_bins)
+            df=2, size=(self.slice_block * self.config.daq.roach_avg, self.config.daq.freq_bins)
         )
         noise_array *= self.noise_mean_func(self.freq_axis) / noise_array.mean(axis=0)
 
-        # Scale by noise power and by requant gain.
+        # Scale by noise power.
         noise_array *= noise_scaling
         noise_array = np.around(noise_array).astype("uint8")
 
@@ -1258,13 +1259,18 @@ class DAQ:
         """
         return None
 
-    def roach_slice_avg(self, signal_array, N=2):
+    def roach_slice_avg(self, signal_array):
 
-        N = int(N)
-        if signal_array.shape[0] % 2 == 0:
-            result = signal_array[1::2] + signal_array[::2]
+        N = int(self.config.daq.roach_avg)
+
+        if self.config.daq.roach_inverted_flag == True:
+            result = signal_array[::N]
+
         else:
-            result = signal_array[1::2] + signal_array[:-1:2]
+            if signal_array.shape[0] % 2 == 0:
+                result = signal_array[1::2] + signal_array[::2]
+            else:
+                result = signal_array[1::2] + signal_array[:-1:2]
 
         return result
 
