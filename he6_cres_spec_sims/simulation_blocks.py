@@ -864,7 +864,6 @@ class DAQ:
         self.config = config
 
         # DAQ parameters derived from the config parameters.
-        print(config.daq.freq_bw, config.daq.freq_bins)
         self.delta_f = config.daq.freq_bw / config.daq.freq_bins
         self.delta_t = 1 / self.delta_f
         self.slice_time = self.delta_t * self.config.daq.roach_avg
@@ -906,7 +905,6 @@ class DAQ:
         """
         self.tracks = downmixed_tracks_df
         self.build_results_dir()
-        print(self.tracks.keys())
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
         self.build_spec_file_paths()
         self.build_empty_spec_files()
@@ -940,13 +938,16 @@ class DAQ:
                     file_in_acq, start_slice, stop_slice
                 )
 
-                requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**17)
-                print(np.shape(signal_array.T), np.shape(noise_array))
+                requant_gain_scaling = 2**self.config.daq.requant_gain
+
                 spec_array = (
-                    (signal_array.T
-                    * self.gain_func(self.freq_axis)
-                    + noise_array)**2
+                    signal_array
                     * requant_gain_scaling
+                    # LNA gain of 67dB
+                    #TODO: make this a function of freq
+                    *5e6
+                    * self.gain_func(self.freq_axis)
+                    + noise_array
                 )
 
                 spec_array = self.roach_slice_avg(spec_array)
@@ -1111,11 +1112,11 @@ class DAQ:
                 : self.pts_per_fft // 2
             ]
 
-        signal_array = np.real(fft)
+        signal_array = np.real(fft)**2
 
         #can't average until we've added noise and gotten the powers. 
 
-        return signal_array
+        return signal_array.T
 
     def write_to_spec(self, spec_array, spec_file_path):
         """
@@ -1155,7 +1156,8 @@ class DAQ:
         delta_f_12 = 2.4e9 / 2**13
 
         noise_power_scaling = self.delta_f / delta_f_12
-        noise_scaling = noise_power_scaling
+        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
+        noise_scaling = noise_power_scaling * requant_gain_scaling
 
         # Chisquared noise:
         noise_array = self.rng.chisquare(
