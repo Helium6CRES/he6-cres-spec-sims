@@ -1,0 +1,62 @@
+# he6_cres_spec_sims example config file. 
+# if sim_daq: you must specify number acquisitions and acquisition time and event rates.
+
+Settings: 
+    rand_seed: 715
+    sim_daq: True #If true will simulate daq and create spec file, if false no need to fill out daq section
+
+Physics:
+    events_to_simulate : "inf" #if sim_daq==True will instead calculate appropriate event rate for each spec file
+    betas_to_simulate : 10
+    energy_spectrum: 
+        beta_source: "He6"
+    freq_acceptance_high: 18.0e+9
+    freq_acceptance_low: 19.1e+9
+    min_rho : 0.0
+    max_rho : 5.78e-3
+    min_z : -2.5e-3
+    max_z : 2.5e-3
+    min_theta : 89.0
+    max_theta : 90.0
+    beta_rate: 1.5e+4
+
+EventBuilder:
+    main_field : 1.700468
+    trap_current : .1
+    decay_cell_radius : 5.78e-3
+
+SegmentBuilder: 
+    mean_track_length : 10.0e-3
+    jump_size_eV : 14
+    jump_std_eV : 5
+    pitch_angle_costheta_std : 0.0
+    jump_num_max : 0
+
+BandBuilder: 
+    sideband_num: 0
+    frac_total_segment_power_cut : 0.01
+    harmonic_sidebands: True
+    magnetic_modulation: False 
+
+TrackBuilder:
+    run_length: 60.0e-6
+
+DMTrackBuilder:
+    mixer_freq: 17.9e+9
+
+Daq:
+    n_files: 2
+    spec_length: .006
+    freq_bw: 1.2e+9 
+    freq_bins: 4096
+    roach_avg: 2
+    roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
+    requant_gain: 17 
+    noise_file_gain: 17 #requant gain that the noise profile was taken with
+    rng_seed: 123456
+    build_labels: False
+    gain_noise_csv_path: "C:/Users/RJ/OneDrive - North Carolina State University/Research/CRES/he6-cres-spec-sims/config_files/base_gain_noise.csv"
+    spec_prefix: "SNR_dev"
+
+SpecBuilder:
+    specfile_name: "SNR_dev_spec_file"
