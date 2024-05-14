@@ -201,7 +201,9 @@ class Config:
 
 
 class Physics:
-    """TODO: DOCUMENT"""
+    """Creates distributions of beta kinematic parameters (position, velocity, time)
+        according to the decaying isotope
+    """
 
     def __init__(self, config, initialize_source=True):
 
@@ -245,7 +247,9 @@ class Physics:
 
 
 class EventBuilder:
-    """TODO:Document"""
+    """  Constructs a list of betas which are trapped within the detector volume
+         (Doesn't hit waveguide walls && pitch angle is magnetically trapped)
+    """
 
     def __init__(self, config):
 
@@ -441,7 +445,8 @@ class EventBuilder:
 
 
 class SegmentBuilder:
-    """TODO:Document"""
+    """ Constructs a list of tracks/ segments (interrupted by scatters) making up the trapped event
+    """
 
     def __init__(self, config):
 
@@ -654,7 +659,8 @@ class SegmentBuilder:
 
 
 class BandBuilder:
-    """TODO:Document"""
+    """ Constructs list of sidebands and powers for trapped "segments", between scatters
+    """
 
     def __init__(self, config):
 
@@ -727,7 +733,8 @@ class BandBuilder:
 
 
 class TrackBuilder:
-    """TODO:Document"""
+    """ Assigns track truth parameters (e.g. start/ end times, frequencies) to created tracks
+    """
 
     def __init__(self, config):
 
@@ -826,7 +833,8 @@ class TrackBuilder:
 
 class DMTrackBuilder:
 
-    """TODO:Document"""
+    """ Downmixes freq_start and freq_stop of simulated tracks to observed frequency band out of DAQ
+    """
 
     def __init__(self, config):
 
@@ -853,10 +861,8 @@ class DMTrackBuilder:
 
 
 class DAQ:
-
-    """
-    Document.
-
+    """  If desired, passes through list of produced downmixed tracks through DAQ, producing fake .spec(k) files
+         These can be passed through Katydid, identically to data
     """
 
     def __init__(self, config):
