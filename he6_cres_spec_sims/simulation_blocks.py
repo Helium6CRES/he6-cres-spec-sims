@@ -107,8 +107,7 @@ class Config:
     field_strength: Trap_profile instance method
         Quick access to field strength values. field_strength(rho,z)=
         field magnitude in T at position (rho,z). Note that there is no
-        field variation in phi. num_legs : int The number of legs the
-        animal has (default 4).
+        field variation in phi.
 
     Methods
     -------
@@ -335,10 +334,10 @@ class EventBuilder:
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]
+        initial_zpos = beta_position[2]
 
         initial_theta = beta_direction[0]
         initial_phi_dir = beta_direction[1]
-        initial_zpos = beta_position[2]
 
         initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
         initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
@@ -624,7 +623,11 @@ class SegmentBuilder:
             df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
         )
 
-        if energy_stop<0: energy_stop=1e-10
+        # Replace negative energies if energy_stop is a float or pandas series
+        if isinstance(energy_stop, pd.core.series.Series):
+            energy_stop[energy_stop < 0]  = 1e-10
+        elif energy_stop < 0:
+            energy_stop = 1e-10
 
         freq_stop = sc.avg_cycl_freq(
             energy_stop, df["center_theta"], df["rho_center"], trap_profile
