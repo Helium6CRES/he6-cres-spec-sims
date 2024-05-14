@@ -13,8 +13,8 @@ block.
 The general approach is that pandas dataframes, each row describing a
 single CRES data object (event, segment,  band, or track), are passed between
 the blocks, each block adding complexity to the simulation. This general
-structure is broken by the last two  classes (Daq and SpecBuilder),
-which are responsible for creating the .spec (binary) file output. This
+structure is broken by the last class (Daq),
+which is responsible for creating the .spec (binary) file output. This
 .spec file can then be fed into Katydid just as real data would be.
 
 Classes contained in module: 
@@ -28,7 +28,6 @@ Classes contained in module:
     * TrackBuilder
     * DMTrackBuilder
     * Daq
-    * SpecBuilder
 
 """
 
@@ -42,9 +41,8 @@ import numpy as np
 from numpy.random import default_rng
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy import interpolate
+from scipy import integrate, interpolate
 from time import process_time
-from scipy import integrate
 
 from he6_cres_spec_sims.daq.frequency_domain_packet import FDpacket
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
@@ -169,7 +167,6 @@ class Config:
                     self.trackbuilder = DotDict(config_dict["TrackBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
-                    self.specbuilder = DotDict(config_dict["SpecBuilder"])
 
         except Exception as e:
             print("Config file failed to load.")
