@@ -100,12 +100,12 @@ class EventBuilder:
         initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
         initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
 
-        # TODO: These center_x and center_y are a bit confusing. May
-        # be nice to just build this into the power calc.
-        center_x = initial_rho_pos - initial_radius * np.cos(
-            (90 - initial_phi_dir) / RAD_TO_DEG
-        )
-        center_y = initial_radius * np.sin((90 - initial_phi_dir) / RAD_TO_DEG)
+        # Given initial position, velocity vectors, compute guiding center position (x,y)
+        # Note initial velocity vector (in x-y plane) is orthogonal to vector connecting guiding center to beta
+        # \vec{r}_{GC} = \vec{r}_{init} - Rc \vec{n}_\perp, where \vec{v}_{init} \cdot \vec{n}_\perp = 0 with both unit length
+        # Slightly inaccurate using Rc at beta position, and not at the guiding center (root-finding problem)
+        center_x = initial_rho_pos * np.cos( initial_phi_pos / RAD_TO_DEG) - initial_radius * np.sin( initial_phi_dir / RAD_TO_DEG)
+        center_y = initial_rho_pos * np.sin( initial_phi_pos / RAD_TO_DEG) + initial_radius * np.cos( initial_phi_dir / RAD_TO_DEG)
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
