@@ -4,5 +4,5 @@
 "events_to_simulate": -1,
 "betas_to_simulate": 1e1,
 "rand_seeds": [2023, 715, 1100],
-"fields_T": [1.0, 2.0, 3.0],
-"traps_A": [0.830769, 1.107692, 1.661538]}
+"fields_T": [1.0],
+"traps_A": [0.830769]}
