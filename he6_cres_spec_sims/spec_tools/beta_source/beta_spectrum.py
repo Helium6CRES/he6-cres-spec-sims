@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import json
 
-ME = 5.10998950e5  # Electron rest mass (eV).
+from he6_cres_spec_sims.constants import ME
 
 # ---------- Beta Spectrum class used in he6-cres-spec-sims ---------------
 

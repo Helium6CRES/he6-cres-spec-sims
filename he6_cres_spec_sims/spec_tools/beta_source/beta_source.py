@@ -4,7 +4,7 @@ import numpy as np
 from .beta_spectrum import BetaSpectrum
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 
-ME = 5.10998950e5  # Electron rest mass (eV).
+from he6_cres_spec_sims.constants import ME
 
 
 class BetaSource:

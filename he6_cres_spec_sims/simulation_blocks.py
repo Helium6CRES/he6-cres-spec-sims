@@ -50,23 +50,11 @@ from he6_cres_spec_sims.spec_tools.beta_source.beta_source import BetaSource
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
 
+from .constants import *
+
 # TODO: Make the seed a config parameter, and pass rng(seed) around.
 
 rng = default_rng()
-
-# Math constants.
-
-PI = math.pi
-RAD_TO_DEG = 180 / math.pi
-P11_PRIME = 1.84118  # First zero of J1 prime (bessel function)
-
-# Physics constants.
-
-ME = 5.10998950e5  # Electron rest mass (eV).
-M = 9.1093837015e-31  # Electron rest mass (kg).
-Q = 1.602176634e-19  # Electron charge (Coulombs).
-C = 299792458  # Speed of light in vacuum (m/s)
-J_TO_EV = 6.241509074e18  # Joule-ev conversion
 
 
 class DotDict(dict):
