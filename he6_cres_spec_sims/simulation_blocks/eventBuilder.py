@@ -184,18 +184,12 @@ class EventBuilder:
         max_radius = segment_df["max_radius"][0]
         energy = segment_df["energy"][0]
 
-        trap_condition = 0
-
         if initial_theta < trapped_initial_theta:
             # print("Not Trapped: Pitch angle too small.")
-            trap_condition += 1
+            return False
 
         if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
             # print("Not Trapped: Collided with guide wall.")
-            trap_condition += 1
-
-        if trap_condition == 0:
-            # print("Trapped!")
-            return True
-        else:
             return False
+
+        return True

@@ -33,8 +33,6 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from pathlib import Path
-# Path to local imports.
-sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
 from he6_cres_spec_sims.spec_tools.spec_calc import spec_calc as sc
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 
@@ -56,7 +54,6 @@ class Simulation:
         bandbuilder = sim_blocks.BandBuilder(self.config)
         trackbuilder = sim_blocks.TrackBuilder(self.config)
         dmtrackbuilder = sim_blocks.DMTrackBuilder(self.config)
-        # daq = sim_blocks.Daq(self.config)
         daq = sim_blocks.DAQ(self.config)
 
         events = eventbuilder.run()
