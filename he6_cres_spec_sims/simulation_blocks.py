@@ -13,8 +13,8 @@ block.
 The general approach is that pandas dataframes, each row describing a
 single CRES data object (event, segment,  band, or track), are passed between
 the blocks, each block adding complexity to the simulation. This general
-structure is broken by the last two  classes (Daq and SpecBuilder),
-which are responsible for creating the .spec (binary) file output. This
+structure is broken by the last class (Daq),
+which is responsible for creating the .spec (binary) file output. This
 .spec file can then be fed into Katydid just as real data would be.
 
 Classes contained in module: 
@@ -28,7 +28,6 @@ Classes contained in module:
     * TrackBuilder
     * DMTrackBuilder
     * Daq
-    * SpecBuilder
 
 """
 
@@ -42,7 +41,7 @@ import numpy as np
 from numpy.random import default_rng
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy import interpolate
+from scipy import integrate, interpolate
 from time import process_time
 
 from he6_cres_spec_sims.daq.frequency_domain_packet import FDpacket
@@ -106,8 +105,7 @@ class Config:
     field_strength: Trap_profile instance method
         Quick access to field strength values. field_strength(rho,z)=
         field magnitude in T at position (rho,z). Note that there is no
-        field variation in phi. num_legs : int The number of legs the
-        animal has (default 4).
+        field variation in phi.
 
     Methods
     -------
@@ -169,7 +167,6 @@ class Config:
                     self.trackbuilder = DotDict(config_dict["TrackBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
-                    self.specbuilder = DotDict(config_dict["SpecBuilder"])
 
         except Exception as e:
             print("Config file failed to load.")
@@ -204,7 +201,9 @@ class Config:
 
 
 class Physics:
-    """TODO: DOCUMENT"""
+    """Creates distributions of beta kinematic parameters (position, velocity, time)
+        according to the decaying isotope
+    """
 
     def __init__(self, config, initialize_source=True):
 
@@ -227,10 +226,30 @@ class Physics:
         )
 
         return position, direction
+    
+    def number_of_events(self):
+        # determine number of events needed to simulate
+        # TODO: option to do this using empirical beta rate to cres rate function,
+        beta_rate = self.config.physics.beta_rate
+        # bs_norm = self.bs.beta_spectrum.dNdE_norm
+        # cres_ratio = integrate.quad(lambda x: self.bs.beta_spectrum.dNdE(x),
+        #                             sc.freq_to_energy(self.config.physics.freq_acceptance_low,
+        #                                                 self.config.eventbuilder.main_field),
+        #                             sc.freq_to_energy(self.config.physics.freq_acceptance_high,
+        #                                                 self.config.eventbuilder.main_field),
+        #                             epsrel=1e-6
+        #                             )[0]
+
+        cres_ratio = self.bs.fraction_of_spectrum
+        cres_rate = beta_rate*cres_ratio
+        return cres_rate*self.config.daq.n_files*self.config.daq.spec_length
+
 
 
 class EventBuilder:
-    """TODO:Document"""
+    """  Constructs a list of betas which are trapped within the detector volume
+         (Doesn't hit waveguide walls && pitch angle is magnetically trapped)
+    """
 
     def __init__(self, config):
 
@@ -246,13 +265,18 @@ class EventBuilder:
         # beta_num denotes the total number of betas produced in the trap.
         beta_num = 0
 
-        events_to_simulate = self.config.physics.events_to_simulate
-        betas_to_simulate = self.config.physics.betas_to_simulate
-
-        if events_to_simulate == -1:
-            events_to_simulate = np.inf
-        if betas_to_simulate == -1:
+        # if simulating full daq we instead use the beta monitor rate to determine the number of events we should be seeing
+        if self.config.settings.sim_daq==True:
+            events_to_simulate = self.physics.number_of_events()
             betas_to_simulate = np.inf
+        else:
+            events_to_simulate = self.config.physics.events_to_simulate
+            betas_to_simulate = self.config.physics.betas_to_simulate
+
+            if events_to_simulate == -1:
+                events_to_simulate = np.inf
+            if betas_to_simulate == -1:
+                betas_to_simulate = np.inf
 
         print(
             f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}"
@@ -311,10 +335,10 @@ class EventBuilder:
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]
+        initial_zpos = beta_position[2]
 
         initial_theta = beta_direction[0]
         initial_phi_dir = beta_direction[1]
-        initial_zpos = beta_position[2]
 
         initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
         initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
@@ -373,7 +397,8 @@ class EventBuilder:
             "segment_power": 0.0,
             "slope": 0.0,
             "segment_length": 0.0,
-            "band_power": np.NaN,
+            "band_power_start": np.NaN,
+            "band_power_stop": np.NaN,
             "band_num": np.NaN,
             "segment_num": 0,
             "event_num": event_num,
@@ -420,7 +445,8 @@ class EventBuilder:
 
 
 class SegmentBuilder:
-    """TODO:Document"""
+    """ Constructs a list of tracks/ segments (interrupted by scatters) making up the trapped event
+    """
 
     def __init__(self, config):
 
@@ -599,7 +625,11 @@ class SegmentBuilder:
             df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
         )
 
-        if energy_stop<0: energy_stop=1e-10
+        # Replace negative energies if energy_stop is a float or pandas series
+        if isinstance(energy_stop, pd.core.series.Series):
+            energy_stop[energy_stop < 0]  = 1e-10
+        elif energy_stop < 0:
+            energy_stop = 1e-10
 
         freq_stop = sc.avg_cycl_freq(
             energy_stop, df["center_theta"], df["rho_center"], trap_profile
@@ -629,7 +659,8 @@ class SegmentBuilder:
 
 
 class BandBuilder:
-    """TODO:Document"""
+    """ Constructs list of sidebands and powers for trapped "segments", between scatters
+    """
 
     def __init__(self, config):
 
@@ -684,11 +715,13 @@ class BandBuilder:
                     row_copy = row.copy()
 
                     # fill in new avg_cycl_freq, band_power, band_num
+                    # TODO: properly determine band power stop.
                     row_copy["avg_cycl_freq"] = sideband_amplitudes[i][0]
                     # Note that the sideband amplitudes need to be squared to give power.
-                    row_copy["band_power"] = (
+                    row_copy["band_power_start"] = (
                         sideband_amplitudes[i][1] ** 2 * row.segment_power
                     )
+                    row_copy["band_power_stop"] = row_copy["band_power_start"]
                     row_copy["band_num"] = band_num
 
                     # append to band_list, as it's better to grow a list than a df
@@ -700,7 +733,8 @@ class BandBuilder:
 
 
 class TrackBuilder:
-    """TODO:Document"""
+    """ Assigns track truth parameters (e.g. start/ end times, frequencies) to created tracks
+    """
 
     def __init__(self, config):
 
@@ -713,11 +747,13 @@ class TrackBuilder:
         # events_to_simulate = self.config.physics.events_to_simulate
         events_simulated = int(bands_df["event_num"].max() + 1)
         print("events simulated: ", events_simulated)
-        # TODO: Event timing is not currently physical.
+        # TODO: Event timing is not currently physical. 
+        # RJ: working on making this more physical, currently assuming beta monitor rate is equivalent to decay cell rate
         # Add time/freq start/stop.
         tracks_df = bands_df.copy()
         tracks_df["time_start"] = np.NaN
         tracks_df["time_stop"] = np.NaN
+        tracks_df["file_in_acq"] = np.NaN
 
         tracks_df["freq_start"] = bands_df["avg_cycl_freq"]
         tracks_df["freq_stop"] = (
@@ -726,16 +762,18 @@ class TrackBuilder:
 
         # dealing with timing of the events.
         # for now just put all events in the window... need to think about this.
-        trapped_event_start_times = np.random.uniform(0, run_length, events_simulated)
+        window = self.config.daq.n_files*self.config.daq.spec_length
+        trapped_event_start_times = np.random.uniform(0, window, events_simulated)
 
         # iterate through the segment zeros and fill in start times.
-        # TODO: Add in a file num here.
 
         for index, row in bands_df[bands_df["segment_num"] == 0.0].iterrows():
             #             print(index)
             event_num = int(tracks_df["event_num"][index])
             #             print(event_num)
-            tracks_df["time_start"][index] = trapped_event_start_times[event_num]
+            file_num = int(trapped_event_start_times[event_num] // self.config.daq.spec_length)
+            tracks_df["time_start"][index] = trapped_event_start_times[event_num] - self.config.daq.spec_length*file_num
+            tracks_df["file_in_acq"][index] = file_num
 
         for event in range(0, events_simulated):
 
@@ -762,10 +800,16 @@ class TrackBuilder:
                     "segment_length"
                 ].iloc[0]
 
+                # print(tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)])
+                file_num = tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)]["file_in_acq"]
+
                 for index, row in tracks_df[fill_condition].iterrows():
                     tracks_df["time_start"][index] = (
                         previous_segment_time_start + previous_segment_length
                     )
+
+                    #inherit file_in_acq from parent event
+                    tracks_df["file_in_acq"][index] = file_num
 
         tracks_df["time_stop"] = tracks_df["time_start"] + tracks_df["segment_length"]
 
@@ -795,7 +839,8 @@ class TrackBuilder:
 
 class DMTrackBuilder:
 
-    """TODO:Document"""
+    """ Downmixes freq_start and freq_stop of simulated tracks to observed frequency band out of DAQ
+    """
 
     def __init__(self, config):
 
@@ -822,10 +867,8 @@ class DMTrackBuilder:
 
 
 class DAQ:
-
-    """
-    Document.
-
+    """  If desired, passes through list of produced downmixed tracks through DAQ, producing fake .spec(k) files
+         These can be passed through Katydid, identically to data
     """
 
     def __init__(self, config):
@@ -901,19 +944,25 @@ class DAQ:
 
                 noise_array = self.noise_array.copy()
                 self.rng.shuffle(noise_array)
-                noise_array = noise_array[: num_slices // 2]
+                noise_array = noise_array[: num_slices]
 
                 signal_array = self.build_signal_chunk(
                     file_in_acq, start_slice, stop_slice
                 )
 
-                # Account for mean = 1 gain, add base_gain, add noise.
+                requant_gain_scaling = 2**self.config.daq.requant_gain
+
                 spec_array = (
                     signal_array
-                    * self.config.daq.base_gain
+                    * requant_gain_scaling
+                    # LNA gain of 67dB
+                    #TODO: make this a function of freq
+                    *5e6
                     * self.gain_func(self.freq_axis)
                     + noise_array
                 )
+
+                spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
                 self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
@@ -1075,12 +1124,11 @@ class DAQ:
                 : self.pts_per_fft // 2
             ]
 
-        signal_array = np.real(fft) ** 2
+        signal_array = np.real(fft)**2
 
-        # Average time slices and transpose the signal array so that it's shape is (slice, freq_bins)
-        signal_array = self.roach_slice_avg(signal_array.T, N=self.config.daq.roach_avg)
+        #can't average until we've added noise and gotten the powers. 
 
-        return signal_array
+        return signal_array.T
 
     def write_to_spec(self, spec_array, spec_file_path):
         """
@@ -1120,16 +1168,16 @@ class DAQ:
         delta_f_12 = 2.4e9 / 2**13
 
         noise_power_scaling = self.delta_f / delta_f_12
-        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**17)
+        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
         noise_scaling = noise_power_scaling * requant_gain_scaling
 
         # Chisquared noise:
         noise_array = self.rng.chisquare(
-            df=2, size=(self.slice_block, self.config.daq.freq_bins)
+            df=2, size=(self.slice_block * self.config.daq.roach_avg, self.config.daq.freq_bins)
         )
         noise_array *= self.noise_mean_func(self.freq_axis) / noise_array.mean(axis=0)
 
-        # Scale by noise power and by requant gain.
+        # Scale by noise power.
         noise_array *= noise_scaling
         noise_array = np.around(noise_array).astype("uint8")
 
@@ -1225,13 +1273,18 @@ class DAQ:
         """
         return None
 
-    def roach_slice_avg(self, signal_array, N=2):
+    def roach_slice_avg(self, signal_array):
 
-        N = int(N)
-        if signal_array.shape[0] % 2 == 0:
-            result = signal_array[1::2] + signal_array[::2]
+        N = int(self.config.daq.roach_avg)
+
+        if self.config.daq.roach_inverted_flag == True:
+            result = signal_array[::N]
+
         else:
-            result = signal_array[1::2] + signal_array[:-1:2]
+            if signal_array.shape[0] % 2 == 0:
+                result = signal_array[1::2] + signal_array[::2]
+            else:
+                result = signal_array[1::2] + signal_array[:-1:2]
 
         return result
 
@@ -1269,295 +1322,3 @@ class DAQ:
         print(spec_array.shape)
 
         return spec_array
-
-
-## ________ OLD version of DAQ class. _______________
-
-# Notes:
-# * This version didn't actually do FFTs, it just allocated power to bins on a line.
-# That wasn't sufficient. Also the
-
-
-class Daq:
-    """TODO:Document"""
-
-    def __init__(self, config):
-
-        self.config = config
-
-    def run(self, downmixed_tracks_df):
-        """TODO:Document"""
-        print("~~~~~~~~~~~~Daq Block~~~~~~~~~~~~~~\n")
-
-        # Allocate power in fW to each bin of the spec_array.
-        spec_array = self.allocate_powers_from_df(downmixed_tracks_df)
-
-        return spec_array
-
-    def allocate_powers_from_df(self, downmixed_tracks_df):
-        """TODO:Document"""
-
-        daq_freqbw = self.config.daq.daq_freqbw
-        freq_bins = self.config.daq.freq_bins
-        fft_per_slice = self.config.daq.fft_per_slice
-        run_length = self.config.trackbuilder.run_length
-
-        # Start by making the grid in freq and time
-        freq_per_bin = daq_freqbw / freq_bins
-
-        time_per_slice = fft_per_slice / freq_per_bin
-        time_slices = int(run_length / time_per_slice)
-
-        # Should be almost identical to run_length but a multiple of time_per_slice.
-        spec_time_stop = time_slices * time_per_slice
-
-        t_ticks = np.arange(0, spec_time_stop + 1 * time_per_slice, time_per_slice)
-        f_ticks = np.arange(0, daq_freqbw + 1 * freq_per_bin, freq_per_bin)
-
-        spec_array = np.zeros((time_slices, freq_bins))
-        print("Creating a spec_array with shape: ", spec_array.shape)
-
-        print(
-            "\nAllocating power to bins in spec_array for {} tracks.".format(
-                downmixed_tracks_df.shape[0]
-            )
-        )
-
-        # TODO: Would be better to use iterrows.
-        for i, dm_track in downmixed_tracks_df.iterrows():
-            # for i in range(downmixed_tracks_df.shape[0]):
-
-            time_start, freq_start = (
-                dm_track["time_start"],
-                dm_track["freq_start"],
-            )
-            time_stop, freq_stop = (
-                dm_track["time_stop"],
-                dm_track["freq_stop"],
-            )
-            t_intercepts = t_ticks[(t_ticks > time_start) & (t_ticks < time_stop)]
-            f_intercepts = f_ticks[(f_ticks > freq_start) & (f_ticks < freq_stop)]
-
-            # Find line equation.
-            m = (freq_stop - freq_start) / (time_stop - time_start)
-            b = freq_start - m * time_start
-
-            # Find list of x values for all grid intersections:
-            t_i = (f_intercepts - b) / m
-            f_i = t_intercepts * m + b
-
-            t_val_of_grid_intersections = np.concatenate(
-                (t_intercepts, t_i, np.asarray([time_start, time_stop]))
-            )
-            t_val_of_grid_intersections.sort()
-
-            f_val_of_grid_intersections = np.concatenate(
-                (f_intercepts, f_i, np.asarray([freq_start, freq_stop]))
-            )
-            f_val_of_grid_intersections.sort()
-
-            # Now find the midpoints of all the lines:
-            t_grid_indx = (
-                t_val_of_grid_intersections[:-1] + t_val_of_grid_intersections[1:]
-            ) / 2
-            f_grid_indx = (
-                f_val_of_grid_intersections[:-1] + f_val_of_grid_intersections[1:]
-            ) / 2
-
-            # # Now find the indices of the effected cells:
-            # t_grid_indx = (t_grid_indx / time_per_slice).astype("int") - 1
-            # f_grid_indx = (f_grid_indx / freq_per_bin).astype("int") - 1
-
-            # TODO: RESTORE THIS!
-            # Now find the indices of the effected cells. I don't think a minus 1 is necessary here.
-            t_grid_indx = (t_grid_indx / time_per_slice).astype("int")
-            f_grid_indx = (f_grid_indx / freq_per_bin).astype("int")
-            # Find the time portion of the line that traveled through the bin.
-            portion_of_tot_band_power = (
-                t_val_of_grid_intersections[1:] - t_val_of_grid_intersections[:-1]
-            ) / time_per_slice
-
-            # Multiply that portion by the power of that track.
-            if self.config.daq.band_power_override:
-                #                 print("band_power was overidden with value: ", self.config.daq.band_power_override)
-                band_power = self.config.daq.band_power_override
-            else:
-                band_power = dm_track["band_power"]
-
-            bin_power = portion_of_tot_band_power * band_power
-
-            # Drop indices that are out of the range of the spec file.
-            out_of_range_condition = (t_grid_indx < time_slices) & (
-                f_grid_indx < freq_bins
-            )
-
-            t_grid_indx = t_grid_indx[out_of_range_condition]
-            f_grid_indx = f_grid_indx[out_of_range_condition]
-            bin_power = bin_power[out_of_range_condition]
-
-            spec_array[t_grid_indx, f_grid_indx] += bin_power
-
-        # Now account for the frequency dependent gain.
-        if self.config.daq.gain_override:
-            print(
-                "\nGain was overidden with value: {} \n".format(
-                    self.config.daq.gain_override
-                )
-            )
-            gain = np.full(freq_bins, self.config.daq.gain_override)
-        else:
-            gain = self.get_measured_gain()
-
-        spec_array *= gain
-
-        # # TODO: DELETE ONCE THIS WORKS:
-
-        # fig, ax = plt.subplots(1, 1, figsize = (14,7))
-        # ax.plot(np.nonzero(spec_array)[0]*time_per_slice, np.nonzero(spec_array)[1]*freq_per_bin, "bo", alpha = .5)
-        # for index, track in downmixed_tracks_df.iterrows():
-
-        #     TimeCoordinates = (track["time_start"],track["time_stop"])
-        #     FreqCoordinates = (track["freq_start"],track["freq_stop"])
-        #     ax.plot(TimeCoordinates, FreqCoordinates, 'ro-',markersize=.5,alpha = .5)
-
-        # plt.xlabel("Time (s)")
-        # plt.ylabel("Freq (Hz)")
-        # plt.title("Visualization of power allocation to spec_array")
-        # plt.show()
-
-        # Now account for the freqency dependent noise.
-        noise_smooth_1d = self.get_measured_noise()
-        noise_array = self.construct_2d_noise_array(time_slices, noise_smooth_1d)
-
-        spec_array += noise_array
-
-        return spec_array
-
-    def get_measured_gain(self):
-
-        gain_dir = pathlib.Path(__file__).parents[0] / "daq/gain_noise_measurements/"
-
-        try:
-            gain_file_path = gain_dir / "gain.csv"
-            gain = np.loadtxt(gain_file_path, delimiter=",")
-
-        except Exception as e:
-            print("Unable to open {}/gain.csv".format(gain_dir))
-            raise e
-
-        return gain
-
-    def get_measured_noise(self):
-
-        # Now how to open gain and noise:
-        noise_dir = pathlib.Path(__file__).parents[0] / "daq/gain_noise_measurements/"
-
-        try:
-            noise_file_path = noise_dir / "noise.csv"
-            noise_smooth_1d = np.loadtxt(noise_file_path, delimiter=",")
-
-        except Exception as e:
-            print("Unable to open {}/noise.csv".format(noise_dir))
-            raise e
-
-        return noise_smooth_1d
-
-    def construct_2d_noise_array(self, time_slices, noise_smooth_1d):
-
-        # With chisq dist DOF = 4:
-        DOF = 4
-        noise_array = np.array(
-            [rng.chisquare(DOF, time_slices) * mu / DOF for mu in noise_smooth_1d]
-        ).T
-
-        # Recently (10/07/2021) discovered that letting "dtype = uint8"
-        # do the rounding is not working well.
-        noise_array = np.around(noise_array, 0)
-
-        return noise_array
-
-
-class SpecBuilder:
-    """TODO:Document
-    TODO: This doesn't need the extra config path argument. It's ugly and you can
-    just use config.config_path instead."""
-
-    def __init__(self, config, config_path):
-
-        self.config_path = config_path
-        self.config = config
-
-    def run(self, spec_array):
-        """TODO:Document"""
-        print("~~~~~~~~~~~~SpecBuilder Block~~~~~~~~~~~~~~\n")
-
-        # Grab the headers for the 4 differnt packets that make up the  (0,1,2,3).
-        # TODO: Think of a more elegant way of getting the headers. Opening this file is clunky...
-        hdr_list = self.get_headers()
-
-        # Make spec file:
-        slices_in_spec = spec_array.shape[0]
-        freq_bins = self.config.daq.freq_bins
-        freq_bins_per_packet = freq_bins / 4
-
-        specfile_name = self.config.specbuilder.specfile_name
-
-        # First make a results_dir with the same name as the config.
-        config_name = self.config_path.stem
-        parent_dir = self.config_path.parents[0]
-        results_dir = parent_dir / config_name
-
-        exists = results_dir.is_dir()
-
-        # If results_dir doesn't exist, then create it.
-        if not exists:
-            results_dir.mkdir()
-            print("created directory : ", results_dir)
-
-        spec_path = results_dir / "{}.spec".format(specfile_name)
-
-        # Pass "wb" to write a binary file
-        with open(spec_path, "wb") as spec_file:
-
-            # Loop over slices in spec file
-            for a in range(slices_in_spec * 4):
-
-                packet_num = a % 4
-                slice_num = a // 4
-
-                # Write data to out_file
-                data = spec_array[slice_num][
-                    int(packet_num * freq_bins_per_packet) : int(
-                        (packet_num + 1) * freq_bins_per_packet
-                    )
-                ]
-                data = data.astype("uint8")
-                # Write appropriate header to spec_file.
-                spec_file.write(hdr_list[packet_num])
-                # Write data to spec_file.
-                data.tofile(spec_file)
-
-        print("\n**Block Output:**")
-        print("Successfully wrote a spec file to {} \n".format(spec_path))
-
-        return None
-
-    def get_headers(self):
-
-        header_dir = pathlib.Path(__file__).parents[0]
-        header_path = header_dir / "daq/example_spec/example_spec_file.spec"
-
-        # open file:
-        hdr_list = []
-        try:
-            with open(header_path, "rb") as in_file:
-                for m in range(4):
-                    hdr = in_file.read(FDpacket.BYTES_IN_HEADER)
-                    hdr_list.append(hdr)
-                    data = in_file.read(FDpacket.BYTES_IN_PAYLOAD)
-
-        except Exception as e:
-            print("Do you have a roach noise file at {} ?".format(header_path))
-            raise e
-
-        return hdr_list

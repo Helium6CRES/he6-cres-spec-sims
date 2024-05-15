@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-*.csv
-*.spec
-cres_specs_env/
-=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -11,4 +6,57 @@ __pycache__/
 # MacOS generated files #
 ######################
 .DS_Store
->>>>>>> feature/anharmonic
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Data Output
+*.csv
+# exception to config example noise file
+!config_files/base_gain_noise.csv
+*.spec
+
+# Config Files
+*.yaml
+#exception for examples
+!config_files/local_base_config_example.yaml
+!config_files/rocks_base_config_example.yaml
+!config_files/spec_example.yaml
+*.json
+!config_files/local_exp_config_example.json
+!config_files/rocks_exp_config_example.json
+!config_files/spec_example.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py

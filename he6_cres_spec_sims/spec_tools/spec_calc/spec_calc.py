@@ -140,9 +140,8 @@ def random_beta_generator(parameter_dict, rand_seed):
     min_theta = parameter_dict["min_theta"] / RAD_TO_DEG
     max_theta = parameter_dict["max_theta"] / RAD_TO_DEG
 
-    # TODO: Explain this in words. Had to change this 10122021 because
-    # it only worked if min_rho was zero.
-    rho_initial = min_rho + np.sqrt(rng.uniform(0, 1) * (max_rho**2 - min_rho**2))
+    # Uniform distribution in an annulus in cylindrical coordinates, found by inverse transform sampling
+    rho_initial = np.sqrt(min_rho**2 + rng.uniform(0, 1) * (max_rho**2 - min_rho**2))
     phi_initial = 2 * PI * rng.uniform(0, 1) * RAD_TO_DEG
     # phi_initial = 0
     z_initial = rng.uniform(min_z, max_z)
