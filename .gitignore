@@ -63,3 +63,4 @@ ipython_config.py
 
 # Development testing
 dev_testing/
+temp*

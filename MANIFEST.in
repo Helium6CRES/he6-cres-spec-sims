@@ -1,3 +1,5 @@
-global-include *.csv
-global-include *.spec
-include README.md
+global-include run_local_experiment.py
+graft demo
+graft config_files
+prune config_files/spec_example
+global-exclude *.csv
