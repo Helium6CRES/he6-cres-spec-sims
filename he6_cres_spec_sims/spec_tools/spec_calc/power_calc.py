@@ -4,6 +4,8 @@ import math
 
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 
+from he6_cres_spec_sims.constants import *
+
 @np.vectorize
 def power_calc(center_x, center_y, frequency, field, trap_radius):
 
@@ -13,11 +15,6 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
     frequency in Hz and field in Tesla. 
     See https://arxiv.org/abs/2405.06847 Eqs 18-20 (n,m,h=1)
     """
-
-    q = 1.602176634e-19  # Electron charge, in Coulombs
-    c = 299792458  # Speed of light in vacuum, in m/s
-    mu0 = 4 * math.pi * 1e-7
-    p11prime = 1.84118
     
     center_rho = np.sqrt(center_x**2 + center_y**2)
 
@@ -29,7 +26,7 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
 
     # values in power equation
     omega = 2 * math.pi * frequency
-    k = omega / c
+    k = omega / C
     v_perp = Rcycl * omega
 
     if k >= kc:
@@ -39,6 +36,6 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
         return 0
 
     P_lambda = math.pi * beta / (2*kc**2 *mu0 * omega) * (p11prime**2 - 1) * sp.jv(1,p11prime)**2
-    power = (q*v_perp/2.) **2 / P_lambda * (sp.jv(0, kc*center_rho)**2 + sp.jv(2, kc*center_rho)**2) * sp.jvp(1, kc*Rcycl)**2
+    power = (Q*v_perp/2.) **2 / P_lambda * (sp.jv(0, kc*center_rho)**2 + sp.jv(2, kc*center_rho)**2) * sp.jvp(1, kc*Rcycl)**2
 
     return power
