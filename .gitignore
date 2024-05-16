@@ -55,6 +55,9 @@ venv.bak/
 !config_files/local_exp_config_example.json
 !config_files/rocks_exp_config_example.json
 !config_files/spec_example.json
+#exception for spectra
+!src/he6_cres_spec_sims/spec_tools/beta_source/pickled_spectra/He6.json
+!src/he6_cres_spec_sims/spec_tools/beta_source/pickled_spectra/Ne19.json
 
 # Jupyter Notebook
 .ipynb_checkpoints
