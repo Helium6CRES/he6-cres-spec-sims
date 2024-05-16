@@ -30,8 +30,6 @@ Classes contained in module:
     * Daq
 
 """
-from numpy.random import default_rng
-rng = default_rng()
 
 from .config import *
 from .eventBuilder import *

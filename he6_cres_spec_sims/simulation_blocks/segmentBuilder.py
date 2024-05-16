@@ -68,6 +68,9 @@ class SegmentBuilder:
 
                 # Physics happens. TODO: This could maybe be wrapped into a different method.
 
+                #first need to set seed for np.random
+                np.random.seed(self.config.settings.rand_seed)
+
                 # Jump Size: Sampled from normal dist.
                 mu = self.config.segmentbuilder.jump_size_eV
                 sigma = self.config.segmentbuilder.jump_std_eV
@@ -210,6 +213,10 @@ class SegmentBuilder:
     def segment_length(self):
         """TODO: DOCUMENT"""
         mu = self.config.segmentbuilder.mean_track_length
+
+        #first need to set seed for np.random
+        np.random.seed(self.config.settings.rand_seed)
+
         segment_length = np.random.exponential(mu)
 
         return segment_length

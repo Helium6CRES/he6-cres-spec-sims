@@ -30,6 +30,10 @@ class TrackBuilder:
 
         # dealing with timing of the events.
         # for now just put all events in the window... need to think about this.
+
+        #first need to set seed for np.random
+        np.random.seed(self.config.settings.rand_seed)
+        
         window = self.config.daq.n_files*self.config.daq.spec_length
         trapped_event_start_times = np.random.uniform(0, window, events_simulated)
 
