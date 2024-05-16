@@ -62,7 +62,7 @@ class EventBuilder:
                 (
                     initial_position,
                     initial_direction,
-                ) = self.physics.generate_beta_position_direction(beta_num)
+                ) = self.physics.generate_beta_position_direction()
 
                 energy = self.physics.generate_beta_energy(beta_num)
 

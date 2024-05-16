@@ -68,19 +68,15 @@ class SegmentBuilder:
 
                 # Physics happens. TODO: This could maybe be wrapped into a different method.
 
-                #first need to set seed for np.random
-                np.random.seed(self.config.settings.rand_seed)
-
                 # Jump Size: Sampled from normal dist.
                 mu = self.config.segmentbuilder.jump_size_eV
                 sigma = self.config.segmentbuilder.jump_std_eV
-                jump_size_eV = np.random.normal(mu, sigma)
+                jump_size_eV = self.config.rng.normal(mu, sigma)
 
                 # Delta Pitch Angle: Sampled from normal dist.
                 mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std
-                rand_float = np.random.normal(
-                    mu, sigma
-                )  # Necessary to properly distribute angles on a sphere.
+                rand_float = self.config.rng.normal( mu, sigma)
+                # Necessary to properly distribute angles on a sphere.
                 delta_center_theta = (np.arccos(rand_float) - PI / 2) * RAD_TO_DEG
 
                 # Second, calculate new pitch angle and energy.
@@ -213,10 +209,6 @@ class SegmentBuilder:
     def segment_length(self):
         """TODO: DOCUMENT"""
         mu = self.config.segmentbuilder.mean_track_length
-
-        #first need to set seed for np.random
-        np.random.seed(self.config.settings.rand_seed)
-
-        segment_length = np.random.exponential(mu)
+        segment_length = self.config.rng.exponential(mu)
 
         return segment_length

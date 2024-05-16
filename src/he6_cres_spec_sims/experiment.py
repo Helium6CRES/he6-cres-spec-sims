@@ -120,7 +120,11 @@ class Experiment:
                 config_dict = yaml.load(f, Loader=yaml.FullLoader)
 
             # Make the appropriate altercations to the config_dict
-            config_dict["Settings"]["rand_seed"] = int(seed)
+            # For seed = None, rng pulls from hardware entropy
+            if seed is not None:
+                config_dict["Settings"]["rand_seed"] = int(seed)
+            else:
+                config_dict["Settings"]["rand_seed"] = None
             config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
             config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
             config_dict["Physics"]["energy_spectrum"]["beta_source"] = str(isotope)
