@@ -53,10 +53,6 @@ Daq:
     roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
     requant_gain: 17 
     noise_file_gain: 17 #requant gain that the noise profile was taken with
-    rng_seed: 123456
     build_labels: False
     gain_noise_csv_path: "C:/Users/RJ/OneDrive - North Carolina State University/Research/CRES/he6-cres-spec-sims/config_files/base_gain_noise.csv"
     spec_prefix: "SNR_dev"
-
-SpecBuilder:
-    specfile_name: "SNR_dev_spec_file"

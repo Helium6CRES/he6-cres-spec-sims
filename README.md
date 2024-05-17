@@ -70,12 +70,15 @@ A package for simulating cres experiments over a variety of magnetic field value
 
 ## Instructions for running simulations locally: 
 
-* **Get dependencies**: 
-	* *Instructions:* 
-		* Navigate into desired parent directory.
-		* Clone the repo, or `git pull` if you already have it. A hard reset to the remote may be necessary if you have an old version. You should be on the `develop` branch (default).  
-			* `git clone git@github.com:Helium6CRES/he6-cres-spec-sims.git`
-		* `pip3 install -r he6-cres-spec-sims/requirements.txt` 
+* **Install**: 
+	* *Instructions:*
+ 		* *Stable Release*
+   			* pip install he6_cres_spec_sims
+         * *Development Release*  
+			* Navigate into desired parent directory.
+			* Clone the repo, or `git pull` if you already have it. A hard reset to the remote may be necessary if you have an old version. You should be on the `develop` branch (default).  
+				* `git clone git@github.com:Helium6CRES/he6-cres-spec-sims.git`
+			* `pip install .` 
 	* *Notes:*
 		* You will need pip3 for the above to work. 
 
@@ -87,8 +90,13 @@ A package for simulating cres experiments over a variety of magnetic field value
 			* Here is how I copy those over from the examples shown in the repo (`he6-cres-spec-sims/config_files`). You should be able to do the same with minimal adjustment of paths.
 				* `cp /home/drew/He6CRES/he6-cres-spec-sims/config_files/local* /media/drew/T7\ Shield/spec_sims_results/local_experiments`
 			* The `base_config_path` field in the `.json` experiment config needs to be manually changed to point at the `.yaml` base config file. Change this path. 
-		* Run experiment: 
-			* `./run_local_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json"`
+		* Run experiment:
+  			* *Script*
+				* `./run_local_experiment.py -exp "/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json"`
+     		* *Interactive Python*
+
+         		* `import he6_cres_spec_sims`
+           		* `he6_cres_spec_sims.run_local_experiment("/media/drew/T7 Shield/spec_sims_results/local_experiments/local_exp_config_example.json")`  
 
 	* *Notes:*
 		* Run experiment:
