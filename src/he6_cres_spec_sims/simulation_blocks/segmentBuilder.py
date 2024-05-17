@@ -66,40 +66,9 @@ class SegmentBuilder:
                 print("Jump: {jump_num}".format(jump_num=jump_num))
                 scattered_segment = event.copy()
 
-                # Physics happens. TODO: This could maybe be wrapped into a different method.
+                # Create new scattered segment then check if its trapped
 
-                # Jump Size: Sampled from normal dist.
-                mu = self.config.segmentbuilder.jump_size_eV
-                sigma = self.config.segmentbuilder.jump_std_eV
-                jump_size_eV = self.config.rng.normal(mu, sigma)
-
-                # Delta Pitch Angle: Sampled from normal dist.
-                mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std
-                rand_float = self.config.rng.normal( mu, sigma)
-                # Necessary to properly distribute angles on a sphere.
-                delta_center_theta = (np.arccos(rand_float) - PI / 2) * RAD_TO_DEG
-
-                # Second, calculate new pitch angle and energy.
-                # New Pitch Angle:
-                center_theta = center_theta + delta_center_theta
-
-                # Solving an issue caused by pitch angles larger than 90.
-                if center_theta > 90:
-                    center_theta = 180 - center_theta
-
-                # New energy:
-                energy = energy_stop - jump_size_eV
-
-                # New position and direction. Only center_theta is changing right now.
-                beta_position, beta_direction = (
-                    [rho_pos, phi_pos, zpos],
-                    [center_theta, phi_dir],
-                )
-
-                # Third, construct a scattered, meaning potentially not-trapped, segment df
-                scattered_segment_df = self.eventbuilder.construct_untrapped_segment_df(
-                    beta_position, beta_direction, energy, event_num, beta_num
-                )
+                scattered_segment_df, center_theta = self.scatter_segment(center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num)
 
                 # Fourth, check to see if the scattered beta is trapped.
                 is_trapped = self.eventbuilder.trap_condition(scattered_segment_df)
@@ -135,6 +104,43 @@ class SegmentBuilder:
         )
 
         return scattered_df
+    
+    def scatter_segment(self, center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num):
+        """Creates Scattered segment from initial event conditions.
+        TODO find more elegant solution to dealing with center_theta, I don't like that its being passed around so much.
+        """
+         # Jump Size: Sampled from normal dist.
+        mu = self.config.segmentbuilder.jump_size_eV
+        sigma = self.config.segmentbuilder.jump_std_eV
+        jump_size_eV = self.config.rng.normal(mu, sigma)
+
+        # Delta Pitch Angle: Sampled from normal dist.
+        mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std
+        rand_float = self.config.rng.normal( mu, sigma)
+        # Necessary to properly distribute angles on a sphere.
+        delta_center_theta = (np.arccos(rand_float) - PI / 2) * RAD_TO_DEG
+
+        # Second, calculate new pitch angle and energy.
+        # New Pitch Angle:
+        center_theta = center_theta + delta_center_theta
+
+        # Solving an issue caused by pitch angles larger than 90.
+        if center_theta > 90:
+            center_theta = 180 - center_theta
+
+        # New energy:
+        energy = energy_stop - jump_size_eV
+
+        # New position and direction. Only center_theta is changing right now.
+        beta_position, beta_direction = (
+            [rho_pos, phi_pos, zpos],
+            [center_theta, phi_dir],
+        )
+
+        # Third, construct a scattered, meaning potentially not-trapped, segment df
+        return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num,
+                                                                beta_num), center_theta
+
 
     def fill_in_properties(self, incomplete_scattered_segments_df):
 
