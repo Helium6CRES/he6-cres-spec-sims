@@ -1,5 +1,6 @@
 import yaml
 import pathlib
+import numpy as np
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
 
 class DotDict(dict):
@@ -100,6 +101,9 @@ class Config:
                     self.trackbuilder = DotDict(config_dict["TrackBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
+
+                print("RS: "+str(self.settings.rand_seed))
+                self.rng = np.random.default_rng(self.settings.rand_seed)
 
         except Exception as e:
             print("Config file failed to load.")

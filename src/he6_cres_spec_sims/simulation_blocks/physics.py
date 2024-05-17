@@ -18,14 +18,12 @@ class Physics:
 
         return self.bs.energy_array[beta_num]
 
-    def generate_beta_position_direction(self, beta_num):
+    def generate_beta_position_direction(self):
 
         # Could maybe improve this by not generating a new one each time,
         # it could be vectorized the way the energy is...
 
-        position, direction = sc.random_beta_generator(
-            self.config.physics, self.config.settings.rand_seed + beta_num
-        )
+        position, direction = sc.random_beta_generator( self.config.physics, self.config.rng)
 
         return position, direction
     

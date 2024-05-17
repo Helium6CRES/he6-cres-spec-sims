@@ -173,11 +173,9 @@ class BetaSpectrum:
         az8 = -3.0 / 8.0 * (ALPHA * Z) ** 8
         return 1.0 + az1 + az2 + az3 + az4 + az6 + az8 - 1.0 / 3.0 * (p(W) * r) ** 2
 
-    def energy_samples(self, n, E_start, E_stop, rand_seed):
+    def energy_samples(self, n, E_start, E_stop, rng):
         """Produce n random samples from dNdE(E) between E_start and E_stop.
         Also return the fraction of the entire spectrum this accounts for."""
-
-        rng = np.random.default_rng(rand_seed)
 
         fraction_of_spectrum = None
 

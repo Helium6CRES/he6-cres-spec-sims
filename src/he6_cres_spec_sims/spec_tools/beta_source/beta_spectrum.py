@@ -96,12 +96,10 @@ class BetaSpectrum:
         return self.dNdE_unnormed_SM(W) * (1 + (self.b / W))
 
 
-    def energy_samples(self, n, E_start, E_stop, rand_seed):
+    def energy_samples(self, n, E_start, E_stop, rng):
 
             """Produce n random samples from dNdE(E) between E_start and E_stop assuming constant spacing in Ws.
             Also return the fraction of the entire spectrum this accounts for."""
-
-            rng = np.random.default_rng(rand_seed)
 
             fraction_of_spectrum = None
 

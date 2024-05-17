@@ -24,8 +24,6 @@ import os
 
 import numpy as np
 
-# from numpy.random import uniform
-
 import scipy.integrate as integrate
 from scipy.fft import fft
 from scipy.optimize import fmin, fminbound
@@ -109,18 +107,13 @@ def power_from_slope(energy, slope, field):
     return power
 
 
-def random_beta_generator(parameter_dict, rand_seed):
+def random_beta_generator(parameter_dict, rng):
 
-    """TODO(byron): Think about if the phi_initial parameter has an
-    effect.
-
+    """
     Generates a random beta in the trap with pitch angle between
     min_theta and max_theta , and initial position (rho,0,z) between
     min_rho and max_rho and min_z and max_z.
     """
-    # Initialize rng. Mult by arbitrary int because seed may be used elsewhere.
-    rng = np.random.default_rng(rand_seed * 11)
-
     min_rho = parameter_dict["min_rho"]
     max_rho = parameter_dict["max_rho"]
 
@@ -133,7 +126,6 @@ def random_beta_generator(parameter_dict, rand_seed):
     # Uniform distribution in an annulus in cylindrical coordinates, found by inverse transform sampling
     rho_initial = np.sqrt(min_rho**2 + rng.uniform(0, 1) * (max_rho**2 - min_rho**2))
     phi_initial = 2 * PI * rng.uniform(0, 1) * RAD_TO_DEG
-    # phi_initial = 0
     z_initial = rng.uniform(min_z, max_z)
 
     u_min = (1 - np.cos(min_theta)) / 2

@@ -44,8 +44,6 @@ class DAQ:
             self.gain_noise.freq, self.gain_noise.gain
         )
 
-        self.rng = np.random.default_rng(self.config.daq.rand_seed)
-
         self.noise_array = self.build_noise_floor_array()
 
     def run(self, downmixed_tracks_df):
@@ -58,8 +56,8 @@ class DAQ:
         self.build_spec_file_paths()
         self.build_empty_spec_files()
 
-        # Define a random phase for each band.
-        self.phase = self.rng.random(size=len(self.tracks))
+        # Define a random phase for each band (multiplied by 2 pi at use).
+        self.phase = self.config.rng.uniform(size=len(self.tracks))
 
         if self.config.daq.build_labels:
             self.build_label_file_paths()
@@ -80,7 +78,7 @@ class DAQ:
                 num_slices = (stop_slice - start_slice) * self.config.daq.roach_avg
 
                 noise_array = self.noise_array.copy()
-                self.rng.shuffle(noise_array)
+                self.config.rng.shuffle(noise_array)
                 noise_array = noise_array[: num_slices]
 
                 signal_array = self.build_signal_chunk(
@@ -309,7 +307,7 @@ class DAQ:
         noise_scaling = noise_power_scaling * requant_gain_scaling
 
         # Chisquared noise:
-        noise_array = self.rng.chisquare(
+        noise_array = self.config.rng.chisquare(
             df=2, size=(self.slice_block * self.config.daq.roach_avg, self.config.daq.freq_bins)
         )
         noise_array *= self.noise_mean_func(self.freq_axis) / noise_array.mean(axis=0)
