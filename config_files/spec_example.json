@@ -1,0 +1,8 @@
+{"experiment_name": "defaults to .json name",
+"base_config_path": "C:/Users/RJ/OneDrive - North Carolina State University/Research/CRES/he6-cres-spec-sims/config_files/spec_example.yaml",
+"isotope": "He6",
+"events_to_simulate": -1,
+"betas_to_simulate": 1e1,
+"rand_seeds": [2023, 715, 1100],
+"fields_T": [1.0],
+"traps_A": [0.830769]}
