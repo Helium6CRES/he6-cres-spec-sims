@@ -8,6 +8,8 @@ from shutil import rmtree
 import typing
 from typing import List
 import yaml
+from pathlib import Path
+import json
 
 import he6_cres_spec_sims.simulation as sim
 from he6_cres_spec_sims.simulation_blocks import Config
@@ -15,6 +17,26 @@ from he6_cres_spec_sims.simulation_blocks import Config
 # from .spec_tools import beta_source as source
 import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+
+#this function runs everything, previously in run_local_experiment.py script, 
+# putting it here allows you to more easily run experiments interactively
+def run_local_experiment(dict_path):
+
+    print(f"\n\n\n Beginning local simulation.\n\n\n")
+
+    experiment_name = Path(dict_path).stem
+
+    sim_experiment_params = json.load(open(dict_path))
+    sim_experiment_params["experiment_name"] = experiment_name
+
+    for key, val in sim_experiment_params.items():
+        print("{}: {}".format(key, val))
+
+    sim_experiment = Experiment(sim_experiment_params)
+
+    print(f"\n\n\n Done running simulation. {sim_experiment_params}")
+
+    return None
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> pathlib.Path:
