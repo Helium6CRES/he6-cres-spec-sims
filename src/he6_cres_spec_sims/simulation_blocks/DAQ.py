@@ -301,7 +301,7 @@ class DAQ:
 
         return [aTens, aOnes]
 
-    def write_to_speck(self, spec_array, speck_file_path):
+    def write_to_speck(self, spec_array, speck_file_path, threshold_factor = 9):
         """
         Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
         worth of data.
@@ -315,28 +315,25 @@ class DAQ:
         # Append empty (zero) header to the spec array.
         footer = np.zeros(3)
 
-        # temporary
-        thresholds = np.ones(freq_bins_in_spec) * 10
+        thresholds = np.mean(self.noise_array, axis=0) * threshold_factor
         data = np.array([])
-        print(type(spec_array[0][0]))
 
         # Pass "ab" to append to a binary file
         counter = 0
         with open(speck_file_path, "ab") as speck_file:
-            #for s in range(slices_in_spec):
-            for s in range(1):
+            for s in range(slices_in_spec):
                 data = np.append(data, header)
-                print(spec_array[0])
                 for j in range(freq_bins_in_spec):
                     if int(spec_array[s][j]) > thresholds[j]:
                         data = np.append(data, self.add_high_power_point(j))
                         data = np.append(data, spec_array[s][j])
                         counter +=1
-                    data = np.append(data, footer)
+                data = np.append(data, footer)
 
             data = data.flatten().astype("uint8")
             data.tofile(speck_file)
-        print("counter: "+str(counter))
+
+        #print("counter: "+str(counter))
 
         return None
 
