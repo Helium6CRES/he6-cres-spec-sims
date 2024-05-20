@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="he6_cres_spec_sims"
-version="0.1.6"
+version="0.2.0"
 authors = [
-    {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
     {name = "William (Drew) Byron", email = "wbyron@uw.edu"},
+    {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
     {name = "Nick Buzinsky", email = "nbuzin@uw.edu"}
 ]
 description = "A package for simulating cres data."
