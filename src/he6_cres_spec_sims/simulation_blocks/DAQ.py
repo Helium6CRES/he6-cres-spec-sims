@@ -100,8 +100,13 @@ class DAQ:
                 spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
-                #self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
-                self.write_to_speck(spec_array, self.spec_file_paths[file_in_acq])
+                if self.config.daq.spec_suffix == "spec":
+                    self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
+
+                elif self.config.daq.spec_suffix == "speck":
+                    self.write_to_speck(spec_array, self.spec_file_paths[file_in_acq])
+                else:
+                    raise ValueError('Invalid spec_suffix: spec || speck')
 
                 if self.config.daq.build_labels:
                     self.write_to_spec(
@@ -113,7 +118,7 @@ class DAQ:
                 f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n"
             )
 
-        print("Done building spec files. ")
+        print("Done building {} files. ".format(self.config.daq.spec_suffix))
         return None
 
     def build_signal_chunk(self, file_in_acq, start_slice, stop_slice):
@@ -301,7 +306,7 @@ class DAQ:
 
         return [aTens, aOnes]
 
-    def write_to_speck(self, spec_array, speck_file_path, threshold_factor = 9):
+    def write_to_speck(self, spec_array, speck_file_path):
         """
         Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
         worth of data.
@@ -315,7 +320,10 @@ class DAQ:
         # Append empty (zero) header to the spec array.
         footer = np.zeros(3)
 
-        thresholds = np.mean(self.noise_array, axis=0) * threshold_factor
+        if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
+                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
+
+        thresholds = np.mean(self.noise_array, axis=0) * self.config.daq.threshold_factor
         data = np.array([])
 
         # Pass "ab" to append to a binary file
@@ -371,8 +379,8 @@ class DAQ:
         spec_file_paths = []
         for idx in range(self.n_spec_files):
 
-            spec_path = self.spec_files_dir / "{}_spec_{}.spec".format(
-                self.config.daq.spec_prefix, idx
+            spec_path = self.spec_files_dir / "{}_spec_{}.{}".format(
+                self.config.daq.spec_prefix, idx, self.config.daq.spec_suffix
             )
             spec_file_paths.append(spec_path)
 
@@ -385,8 +393,8 @@ class DAQ:
         label_file_paths = []
         for idx in range(self.n_spec_files):
 
-            spec_path = self.label_files_dir / "{}_label_{}.spec".format(
-                self.config.daq.spec_prefix, idx
+            spec_path = self.label_files_dir / "{}_label_{}.{}".format(
+                self.config.daq.spec_prefix, idx, self.config.daq.spec_suffix
             )
             label_file_paths.append(spec_path)
 
