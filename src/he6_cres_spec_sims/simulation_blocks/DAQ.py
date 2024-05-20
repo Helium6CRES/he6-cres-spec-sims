@@ -100,7 +100,8 @@ class DAQ:
                 spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
-                self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
+                #self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
+                self.write_to_speck(spec_array, self.spec_file_paths[file_in_acq])
 
                 if self.config.daq.build_labels:
                     self.write_to_spec(
@@ -290,6 +291,56 @@ class DAQ:
 
         return None
 
+    def add_high_power_point(self, frequency_bin):
+        #aIndex (0 - 4095) is a 12-bit number, does not fit in a byte.
+        #Fit in 2 bytes via: index = 2^8 a[0] + a[1]
+        #Fourier power then takes up 1 more byte, we know it can't be 0 (given threshold)
+
+        aOnes = frequency_bin % 256
+        aTens = (frequency_bin - aOnes) // 256
+
+        return [aTens, aOnes]
+
+    def write_to_speck(self, spec_array, speck_file_path):
+        """
+        Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
+        worth of data.
+        """
+        # Make spec file:
+        slices_in_spec, freq_bins_in_spec = spec_array.shape
+
+        # Append empty (zero) header to the spec array.
+        header = np.zeros(32)
+
+        # Append empty (zero) header to the spec array.
+        footer = np.zeros(3)
+
+        # temporary
+        thresholds = np.ones(freq_bins_in_spec) * 10
+        data = np.array([])
+        print(type(spec_array[0][0]))
+
+        # Pass "ab" to append to a binary file
+        counter = 0
+        with open(speck_file_path, "ab") as speck_file:
+            #for s in range(slices_in_spec):
+            for s in range(1):
+                data = np.append(data, header)
+                print(spec_array[0])
+                for j in range(freq_bins_in_spec):
+                    if int(spec_array[s][j]) > thresholds[j]:
+                        data = np.append(data, self.add_high_power_point(j))
+                        data = np.append(data, spec_array[s][j])
+                        counter +=1
+                    data = np.append(data, footer)
+
+            data = data.flatten().astype("uint8")
+            data.tofile(speck_file)
+        print("counter: "+str(counter))
+
+        return None
+
+
     def build_noise_floor_array(self):
         """
         Build a noise floor array with self.slice_block slices.
@@ -422,38 +473,3 @@ class DAQ:
                 result = signal_array[1::2] + signal_array[:-1:2]
 
         return result
-
-    def spec_to_array(
-        self, spec_path, slices=-1, packets_per_slice=1, start_packet=None
-    ):
-        """
-        TODO: Document.
-        Making this just work for one packet per spectrum because that works for simulation in Katydid.
-        * Make another function that works with 4 packets per spectrum (for reading the Kr data).
-        """
-
-        BYTES_IN_PAYLOAD = self.config.daq.freq_bins
-        BYTES_IN_HEADER = 32
-        BYTES_IN_PACKET = BYTES_IN_PAYLOAD + BYTES_IN_HEADER
-
-        if slices == -1:
-            spec_array = np.fromfile(spec_path, dtype="uint8", count=-1).reshape(
-                (-1, BYTES_IN_PACKET)
-            )[:, BYTES_IN_HEADER:]
-        else:
-            spec_array = np.fromfile(
-                spec_path, dtype="uint8", count=BYTES_IN_PAYLOAD * slices
-            ).reshape((-1, BYTES_IN_PACKET))[:, BYTES_IN_HEADER:]
-
-        if packets_per_slice > 1:
-
-            spec_flat_list = [
-                spec_array[(start_packet + i) % packets_per_slice :: packets_per_slice]
-                for i in range(packets_per_slice)
-            ]
-            spec_flat = np.concatenate(spec_flat_list, axis=1)
-            spec_array = spec_flat
-
-        print(spec_array.shape)
-
-        return spec_array
