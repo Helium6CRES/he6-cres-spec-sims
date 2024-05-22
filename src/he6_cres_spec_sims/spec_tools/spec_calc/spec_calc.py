@@ -216,11 +216,11 @@ def min_theta(rho, zpos, trap_profile):
         return False
 
 
-def max_zpos_not_vectorized(energy, center_pitch_angle, rho, trap_profile, debug=False):
+@np.vectorize
+def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
     """Calculates the maximum axial length from center of trap as a
-    function of center_pitch_angle and rho. Not vectorized. See below
-    for vectorized version.
+    function of center_pitch_angle and rho.
     """
 
     if trap_profile.is_trap:
@@ -276,16 +276,6 @@ def max_zpos_not_vectorized(energy, center_pitch_angle, rho, trap_profile, debug
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
-
-def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
-
-    """Vectorized version of max_zpos_not_vectorized function."""
-
-    max_zpos_vectorized = np.vectorize(max_zpos_not_vectorized)
-
-    return max_zpos_vectorized(energy, center_pitch_angle, rho, trap_profile)
-
-
 def mod_index(avg_cycl_freq, zmax):
 
     """Calculates modulation index from average cyclotron frequency
@@ -339,7 +329,8 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         return False
 
 
-def axial_freq_not_vect(energy, center_pitch_angle, rho, trap_profile):
+@np.vectorize
+def axial_freq(energy, center_pitch_angle, rho, trap_profile):
 
     """Caculates the axial frequency of a trapped electron."""
 
@@ -370,59 +361,6 @@ def axial_freq_not_vect(energy, center_pitch_angle, rho, trap_profile):
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
-
-def axial_freq(energy, center_pitch_angle, rho, trap_profile):
-
-    """Vectorized version of axial_freq_not_vectorized function."""
-
-    axial_freq_vect = np.vectorize(axial_freq_not_vect)
-
-    return axial_freq_vect(energy, center_pitch_angle, rho, trap_profile)
-
-
-def avg_cycl_freq_not_vect(energy, center_pitch_angle, rho, trap_profile):
-
-    """Calculates the average cyclotron frquency of an electron given
-    kinetic energy, main field, and center pitch angle.
-    Returns 0 if electron is not trapped.
-    """
-
-    if trap_profile.is_trap:
-
-        Bmin = trap_profile.field_strength(rho, 0)
-        min_trapped_angle = min_theta(rho, 0, trap_profile)
-
-        if center_pitch_angle < min_trapped_angle:
-            print("Warning: (avg_cyc) electron not trapped.")
-            return False
-
-        if center_pitch_angle == 90.0:
-            avg_cyc_freq = energy_to_freq(energy, Bmin)
-
-        else:
-            zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-            B = lambda z: trap_profile.field_strength(rho, z)
-            Bmax = trap_profile.field_strength(rho, zmax)
-            integrand = lambda z: B(z) * ((1 - B(z) / Bmax) ** (-0.5))
-
-            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile)
-
-            # Similar to axial_freq calculation.
-            avg_cyc_freq = (
-                4
-                * Q
-                * ax_freq
-                / (2 * PI * momentum(energy))
-                * integrate.quad(integrand, 0, zmax, epsrel=10**-2)[0]
-            )
-
-        return avg_cyc_freq
-
-    else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
-
-
 def avg_cycl_freq(energy, center_pitch_angle, rho, trap_profile):
 
     field = b_avg(energy, center_pitch_angle, rho, trap_profile)
@@ -430,7 +368,8 @@ def avg_cycl_freq(energy, center_pitch_angle, rho, trap_profile):
     return energy_to_freq(energy, field)
 
 
-def b_avg_not_vect(energy, center_pitch_angle, rho, trap_profile):
+@np.vectorize
+def b_avg(energy, center_pitch_angle, rho, trap_profile):
 
     """Calculates the average magnetic field experienced by an electron
     of a given kinetic energy, main field, and center pitch angle.
@@ -478,20 +417,11 @@ def b_avg_not_vect(energy, center_pitch_angle, rho, trap_profile):
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
-
-def b_avg(energy, center_pitch_angle, rho, trap_profile):
-
-    """Vectorized version of b_avg_not_vectorized function."""
-
-    b_avg_vect = np.vectorize(b_avg_not_vect)
-
-    return b_avg_vect(energy, center_pitch_angle, rho, trap_profile)
-
-
-def t_not_vect(energy, zpos, center_pitch_angle, rho, trap_profile):
+@np.vectorize
+def t(energy, zpos, center_pitch_angle, rho, trap_profile):
 
     """DEBUG(byron): This is returning negative times.
-    Caculates the time for electron to travel from z = 0 to zpos.
+    Calculates the time for electron to travel from z = 0 to zpos.
     """
 
     if trap_profile.is_trap:
@@ -519,15 +449,6 @@ def t_not_vect(energy, zpos, center_pitch_angle, rho, trap_profile):
     else:
         print("ERROR: Given trap profile is not a valid trap")
         return False
-
-
-def t(energy, zpos, center_pitch_angle, rho, trap_profile):
-
-    """Vectorized version of t_not_vect function."""
-
-    t_vect = np.vectorize(t_not_vect)
-
-    return t_vect(energy, zpos, center_pitch_angle, rho, trap_profile)
 
 def waveguide_beta(omega):
     """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode

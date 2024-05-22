@@ -82,4 +82,4 @@ class BetaSource:
 
         else:
 
-            raise NotImplementedError("Kr needs to be reimplimented.")
+            raise NotImplementedError("Kr needs to be reimplemented.")

@@ -14,7 +14,7 @@ class DMTrackBuilder:
 
         print("~~~~~~~~~~~~DMTrackBuilder Block~~~~~~~~~~~~~~\n")
         print(
-            "DownMixing the cyclotron frequency with a {} GHz signal".format(
+            "Downmixing the cyclotron frequency with a {} GHz signal".format(
                 np.around(self.config.downmixer.mixer_freq * 1e-9, 4)
             )
         )
