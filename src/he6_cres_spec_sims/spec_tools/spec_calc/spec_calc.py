@@ -18,22 +18,17 @@ Power    : W
 
 ---
 """
-# TODO: Organize the imports.
 import math
 import os
-
 import numpy as np
 
 import scipy.integrate as integrate
 from scipy.fft import fft
 from scipy.optimize import fmin, fminbound
-from scipy.interpolate import interp1d
 from scipy.misc import derivative
-import scipy.special as ss
+from scipy.special import jv
 
-#import constants
 from he6_cres_spec_sims.constants import *
-
 
 
 # Simple special relativity functions.
@@ -105,40 +100,6 @@ def power_from_slope(energy, slope, field):
     power = slope * (2 * PI) * ((energy_Joules) ** 2) / (Q * field * C**2)
 
     return power
-
-
-def random_beta_generator(parameter_dict, rng):
-
-    """
-    Generates a random beta in the trap with pitch angle between
-    min_theta and max_theta , and initial position (rho,0,z) between
-    min_rho and max_rho and min_z and max_z.
-    """
-    min_rho = parameter_dict["min_rho"]
-    max_rho = parameter_dict["max_rho"]
-
-    min_z = parameter_dict["min_z"]
-    max_z = parameter_dict["max_z"]
-
-    min_theta = parameter_dict["min_theta"] / RAD_TO_DEG
-    max_theta = parameter_dict["max_theta"] / RAD_TO_DEG
-
-    # Uniform distribution in an annulus in cylindrical coordinates, found by inverse transform sampling
-    rho_initial = np.sqrt(min_rho**2 + rng.uniform(0, 1) * (max_rho**2 - min_rho**2))
-    phi_initial = 2 * PI * rng.uniform(0, 1) * RAD_TO_DEG
-    z_initial = rng.uniform(min_z, max_z)
-
-    u_min = (1 - np.cos(min_theta)) / 2
-    u_max = (1 - np.cos(max_theta)) / 2
-
-    sphere_theta_initial = np.arccos(1 - 2 * (rng.uniform(u_min, u_max))) * RAD_TO_DEG
-    sphere_phi_initial = 2 * PI * rng.uniform(0, 1) * RAD_TO_DEG
-
-    position = [rho_initial, phi_initial, z_initial]
-    direction = [sphere_theta_initial, sphere_phi_initial]
-
-    return position, direction
-
 
 def theta_center(zpos, rho, pitch_angle, trap_profile):
 
@@ -601,7 +562,7 @@ def sideband_calc(energy, rho, avg_cycl_freq, axial_freq, zmax, trap_profile, ma
 
     else:
         h =  mod_index(avg_cycl_freq, zmax)
-        sidebands = [abs(ss.jv(k, h)) for k in range(num_sidebands+1)]
+        sidebands = [abs(jv(k, h)) for k in range(num_sidebands+1)]
         return format_sideband_array(sidebands, avg_cycl_freq, axial_freq, h, num_sidebands)
 
 

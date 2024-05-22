@@ -1,5 +1,9 @@
+import numpy as np
+
 from he6_cres_spec_sims.spec_tools.beta_source.beta_source import BetaSource
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+
+from he6_cres_spec_sims.constants import *
 
 
 class Physics:
@@ -12,6 +16,12 @@ class Physics:
         self.config = config
         self.bs = BetaSource(config)
 
+        # distribution of rho positions [m]
+        self.rho_distribution = self.config.dist_interface.get_distribution(self.config.physics.rho)
+
+        # distribution of z positions [m]
+        self.z_distribution = self.config.dist_interface.get_distribution(self.config.physics.z)
+
     def generate_beta_energy(self, beta_num):
 
         # Make this neater, have this function return energy in eV
@@ -20,13 +30,35 @@ class Physics:
 
     def generate_beta_position_direction(self):
 
-        # Could maybe improve this by not generating a new one each time,
-        # it could be vectorized the way the energy is...
+        """
+        Generates a random beta in the trap with pitch angle between
+        min_theta and max_theta , and initial position (rho,0,z) between
+        min_rho and max_rho and min_z and max_z.
+        There should be a way to vectorize this, need to manage/ connect format of outputs
+        """
 
-        position, direction = sc.random_beta_generator( self.config.physics, self.config.dist_interface.rng)
+        min_theta = self.config.physics["min_theta"] / RAD_TO_DEG
+        max_theta = self.config.physics["max_theta"] / RAD_TO_DEG
+
+        rho_initial = self.rho_distribution.generate()
+
+        # No user choice (for now)
+        phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1) * RAD_TO_DEG
+
+        z_initial = self.z_distribution.generate()
+
+        u_min = (1 - np.cos(min_theta)) / 2
+        u_max = (1 - np.cos(max_theta)) / 2
+
+        sphere_theta_initial = np.arccos(1 - 2 * (self.config.dist_interface.rng.uniform(u_min, u_max))) * RAD_TO_DEG
+        sphere_phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1) * RAD_TO_DEG
+
+        position = [rho_initial, phi_initial, z_initial]
+        direction = [sphere_theta_initial, sphere_phi_initial]
+        #print(position, direction)
 
         return position, direction
-    
+
     def number_of_events(self):
         # determine number of events needed to simulate
         # TODO: option to do this using empirical beta rate to cres rate function,

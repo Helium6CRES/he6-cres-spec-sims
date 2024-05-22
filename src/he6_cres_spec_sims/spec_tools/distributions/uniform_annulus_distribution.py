@@ -6,7 +6,7 @@ class UniformAnnulusDistribution(BaseDistribution):
         Derived from inverse transform sampling 
         See also: https://stackoverflow.com/a/13065255
     """
-    def __init__(self, rho_min=0, rho_max=1):
+    def __init__(self, rho_min=0, rho_max=5.78e-3):
         self.rho_min = rho_min
         self.rho_max = rho_max
 
@@ -18,7 +18,7 @@ class UniformAnnulusDistribution(BaseDistribution):
             self.rho_max = yaml_block["rho_max"]
 
         # Define to avoid having to recalculate each generate() call)
-        self.factors = [rho_min**2, rho_max**2 - rho_min**2]
+        self.factors = [self.rho_min**2, self.rho_max**2 - self.rho_min**2]
 
     def generate(self, size=None):
         return sqrt(self.factors[0] + self.rng.uniform(size=size) * self.factors[1])
