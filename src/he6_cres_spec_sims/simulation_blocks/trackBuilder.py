@@ -32,7 +32,7 @@ class TrackBuilder:
         # for now just put all events in the window... need to think about this.
 
         window = self.config.daq.n_files*self.config.daq.spec_length
-        trapped_event_start_times = self.config.rng.uniform(0, window, events_simulated)
+        trapped_event_start_times = self.config.dist_interface.rng.uniform(0, window, events_simulated)
 
         # iterate through the segment zeros and fill in start times.
 

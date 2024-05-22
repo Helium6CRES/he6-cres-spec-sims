@@ -73,7 +73,7 @@ class BetaSource:
                     self.energy_array_len,
                     self.energy_acceptance_low,
                     self.energy_acceptance_high,
-                    self.config.rng,
+                    self.config.dist_interface.rng,
                 )
 
                 print("Fraction of total spectrum: {}\n ".format(self.fraction_of_spectrum))

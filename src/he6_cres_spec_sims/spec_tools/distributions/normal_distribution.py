@@ -1,4 +1,4 @@
-from base_distribution import BaseDistribution
+from .base_distribution import BaseDistribution
 
 class NormalDistribution(BaseDistribution):
     """ Generator for a normal (Gaussian) probability distribution

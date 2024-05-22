@@ -1,4 +1,4 @@
-from base_distribution import BaseDistribution
+from .base_distribution import BaseDistribution
 
 class UniformDistribution(BaseDistribution):
     """ Generator for a uniform probability distribution

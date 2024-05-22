@@ -1,4 +1,4 @@
-from base_distribution import BaseDistribution
+from .base_distribution import BaseDistribution
 
 class ExponentialDistribution(BaseDistribution):
     """ Generator for a exponential probability distribution as e^{-t/tau}

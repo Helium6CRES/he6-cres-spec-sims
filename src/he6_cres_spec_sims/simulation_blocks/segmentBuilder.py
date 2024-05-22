@@ -14,7 +14,7 @@ class SegmentBuilder:
         self.jump_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.energy_loss)
 
         # distribution of track durations [s]
-        self.track_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.track_length)
+        self.segment_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.segment_length)
 
     def run(self, trapped_event_df):
         """TODO: DOCUMENT"""
@@ -27,7 +27,7 @@ class SegmentBuilder:
                 print("\nScattering Event :", event_index)
 
             # Assign segment 0 of event with a segment_length.
-            event["segment_length"] = self.segment_length()
+            event["segment_length"] = self.segment_length_distribution.generate()
 
             # Fill the event with computationally intensive properties.
             event = self.fill_in_properties(event)
@@ -95,7 +95,7 @@ class SegmentBuilder:
                 #     break
 
                 scattered_segment_df["segment_num"] = jump_num
-                scattered_segment_df["segment_length"] = self.segment_length()
+                scattered_segment_df["segment_length"] = self.segment_length_distribution.generate()
                 scattered_segment_df = self.fill_in_properties(scattered_segment_df)
 
                 scattered_segments_list.append(
@@ -120,7 +120,8 @@ class SegmentBuilder:
 
         # Delta Pitch Angle: Sampled from normal dist.
         mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std
-        rand_float = self.config.rng.normal( mu, sigma)
+        rand_float = self.config.dist_interface.rng.normal( mu, sigma)
+
         # Necessary to properly distribute angles on a sphere.
         delta_center_theta = (np.arccos(rand_float) - PI / 2) * RAD_TO_DEG
 
@@ -215,10 +216,3 @@ class SegmentBuilder:
         df["segment_power"] = segment_power
 
         return df
-
-    def segment_length(self):
-        """TODO: DOCUMENT"""
-        mu = self.config.segmentbuilder.mean_track_length
-        segment_length = self.config.rng.exponential(mu)
-
-        return segment_length

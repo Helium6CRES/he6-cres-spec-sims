@@ -23,7 +23,7 @@ class Physics:
         # Could maybe improve this by not generating a new one each time,
         # it could be vectorized the way the energy is...
 
-        position, direction = sc.random_beta_generator( self.config.physics, self.config.rng)
+        position, direction = sc.random_beta_generator( self.config.physics, self.config.dist_interface.rng)
 
         return position, direction
     

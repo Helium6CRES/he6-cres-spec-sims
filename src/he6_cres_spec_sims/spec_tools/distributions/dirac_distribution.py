@@ -1,4 +1,4 @@
-from base_distribution import BaseDistribution
+from .base_distribution import BaseDistribution
 from numpy import ones
 
 class DiracDistribution(BaseDistribution):

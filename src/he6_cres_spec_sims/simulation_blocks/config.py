@@ -1,6 +1,5 @@
 import yaml
 import pathlib
-import numpy as np
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
 from he6_cres_spec_sims.spec_tools.distributions.distribution_interface import DistributionInterface
 
