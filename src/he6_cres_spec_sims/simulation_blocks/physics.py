@@ -55,7 +55,6 @@ class Physics:
 
         position = [rho_initial, phi_initial, z_initial]
         direction = [sphere_theta_initial, sphere_phi_initial]
-        #print(position, direction)
 
         return position, direction
 

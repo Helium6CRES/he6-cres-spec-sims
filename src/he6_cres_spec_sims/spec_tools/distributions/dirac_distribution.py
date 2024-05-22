@@ -13,8 +13,8 @@ class DiracDistribution(BaseDistribution):
         if "value" in yaml_block:
             self.value = yaml_block["value"]
 
-    def generate(self):
-        return self.value
-
-    def generate(self, size):
-        return self.value * ones(size)
+    def generate(self, size=1):
+        if size == 1:
+            return self.value
+        else:
+            return self.value * ones(size)

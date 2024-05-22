@@ -16,6 +16,9 @@ class SegmentBuilder:
         # distribution of track durations [s]
         self.segment_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.segment_length)
 
+        # distribution of scattering angles [degrees]
+        self.scattering_angle_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.scattering_angle)
+
     def run(self, trapped_event_df):
         """TODO: DOCUMENT"""
         print("~~~~~~~~~~~~SegmentBuilder Block~~~~~~~~~~~~~~\n")
@@ -73,7 +76,6 @@ class SegmentBuilder:
                 scattered_segment = event.copy()
 
                 # Create new scattered segment then check if its trapped
-
                 scattered_segment_df, center_theta = self.scatter_segment(center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num)
 
                 # Fourth, check to see if the scattered beta is trapped.
@@ -119,17 +121,34 @@ class SegmentBuilder:
         jump_size_eV = self.jump_distribution.generate()
 
         # Delta Pitch Angle: Sampled from normal dist.
-        mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std
-        rand_float = self.config.dist_interface.rng.normal( mu, sigma)
+        scattering_angle = self.scattering_angle_distribution.generate()
 
-        # Necessary to properly distribute angles on a sphere.
-        delta_center_theta = (np.arccos(rand_float) - PI / 2) * RAD_TO_DEG
+        # Original beta direction vector in cartesian coordinates
+        theta_dir = center_theta # tmp see TODO below
+        v_vec_old = np.array([np.sin(theta_dir/RAD_TO_DEG) *np.cos(phi_dir/RAD_TO_DEG),
+                    np.sin(theta_dir/RAD_TO_DEG)*np.sin(phi_dir/RAD_TO_DEG), np.cos(theta_dir/RAD_TO_DEG)])
+
+        # This always produces a vector lying on cone with angle = scattering_angle with respect to initial velocity vector
+        tmp_theta = theta_dir + scattering_angle
+        tmp_v_vec = np.array([np.sin(tmp_theta/RAD_TO_DEG) *np.cos(phi_dir/RAD_TO_DEG),
+                    np.sin(tmp_theta/RAD_TO_DEG)*np.sin(phi_dir/RAD_TO_DEG), np.cos(tmp_theta/RAD_TO_DEG)])
+
+        # Using Rodrigues' Rotation Formula (rotate tmp_velocity_vec around velocity_vec_old)
+        # Depending on dPhi, get random vector along that cone
+        dPhi = 2*PI*self.config.dist_interface.rng.uniform()
+        vNew = tmp_v_vec * np.cos(dPhi) + np.cross(v_vec_old,tmp_v_vec) * np.sin(dPhi) + v_vec_old * np.dot(v_vec_old,tmp_v_vec) * (1-np.cos(dPhi))
+        vNew /= np.sqrt(np.dot(vNew, vNew)) # Probably unnecessary, don't want this to drift too much from floating point errors
 
         # Second, calculate new pitch angle and energy.
-        # New Pitch Angle:
-        center_theta = center_theta + delta_center_theta
+        theta_new = np.arccos( vNew[2] ) * RAD_TO_DEG
+        phi_dir = np.arctan2(vNew[1],vNew[0]) * RAD_TO_DEG
 
-        # Solving an issue caused by pitch angles larger than 90.
+        # TODO: We should 1) randomly choose z's to scatter at (PDF proportional to v_z^-1, which means saving z-motion, inverse transform sampling)
+        # Then 2, convert local scattered pitch angle to the new center_theta
+        # Since we scatter only at z=0, don't bother propagating scattering change in instantaneous theta_dir to center_theta
+        center_theta = theta_new
+
+        # Ensure that pitch angle is defined to be smaller than 90.
         if center_theta > 90:
             center_theta = 180 - center_theta
 
@@ -143,9 +162,7 @@ class SegmentBuilder:
         )
 
         # Third, construct a scattered, meaning potentially not-trapped, segment df
-        return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num,
-                                                                beta_num), center_theta
-
+        return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num, beta_num), center_theta
 
     def fill_in_properties(self, incomplete_scattered_segments_df):
 

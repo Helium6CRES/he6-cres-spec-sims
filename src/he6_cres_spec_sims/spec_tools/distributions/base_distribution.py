@@ -7,9 +7,5 @@ class BaseDistribution(ABC):
        self.rng = rng 
 
     @abstractmethod
-    def generate(self):
-        raise NotImplementedError("Scalar generate() must be implemented")
-
-    @abstractmethod
     def generate(self, size):
-        raise NotImplementedError("Array generate() must be implemented")
+        raise NotImplementedError("generate() must be implemented")
