@@ -10,6 +10,12 @@ class SegmentBuilder:
         self.config = config
         self.eventbuilder = EventBuilder(config)
 
+        # distribution of energy losses [eV]
+        self.jump_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.energy_loss)
+
+        # distribution of track durations [s]
+        self.track_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.track_length)
+
     def run(self, trapped_event_df):
         """TODO: DOCUMENT"""
         print("~~~~~~~~~~~~SegmentBuilder Block~~~~~~~~~~~~~~\n")
@@ -109,10 +115,8 @@ class SegmentBuilder:
         """Creates Scattered segment from initial event conditions.
         TODO find more elegant solution to dealing with center_theta, I don't like that its being passed around so much.
         """
-         # Jump Size: Sampled from normal dist.
-        mu = self.config.segmentbuilder.jump_size_eV
-        sigma = self.config.segmentbuilder.jump_std_eV
-        jump_size_eV = self.config.rng.normal(mu, sigma)
+        # Jump Size
+        jump_size_eV = self.jump_distribution.generate()
 
         # Delta Pitch Angle: Sampled from normal dist.
         mu, sigma = 0, self.config.segmentbuilder.pitch_angle_costheta_std

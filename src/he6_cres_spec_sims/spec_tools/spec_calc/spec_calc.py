@@ -279,7 +279,7 @@ def max_zpos_not_vectorized(energy, center_pitch_angle, rho, trap_profile, debug
             max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
 
             max_reached_field = min_field / pow(
-                math.sin(center_pitch_angle * math.pi / 180), 2
+                math.sin(center_pitch_angle / RAD_TO_DEG), 2
             )
 
             # initial guess based on treating magnetic well as v-shaped

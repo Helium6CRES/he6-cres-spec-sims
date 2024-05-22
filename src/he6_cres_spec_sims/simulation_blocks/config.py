@@ -2,6 +2,7 @@ import yaml
 import pathlib
 import numpy as np
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
+from he6_cres_spec_sims.spec_tools.distributions.distribution_interface import DistributionInterface
 
 class DotDict(dict):
     """Provides dot.notation access to dictionary attributes."""
@@ -102,8 +103,8 @@ class Config:
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
 
-                print("RS: "+str(self.settings.rand_seed))
-                self.rng = np.random.default_rng(self.settings.rand_seed)
+                print("Seed: "+str(self.settings.rand_seed))
+                self.dist_interface = DistributionInterface(self.settings.rand_seed)
 
         except Exception as e:
             print("Config file failed to load.")

@@ -18,14 +18,14 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
     
     center_rho = np.sqrt(center_x**2 + center_y**2)
 
-    kc = p11prime / trap_radius
+    kc = P11_PRIME / trap_radius
     Rcycl = sc.cyc_radius(sc.freq_to_energy(frequency, field), field, 90)
     
     if Rcycl > trap_radius:
         print("Warning: cyclotron radius greater than trap radius")
 
     # values in power equation
-    omega = 2 * math.pi * frequency
+    omega = 2 * PI * frequency
     k = omega / C
     v_perp = Rcycl * omega
 
@@ -35,7 +35,7 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
         print("Warning: frequency below TE11 cutoff")
         return 0
 
-    P_lambda = math.pi * beta / (2*kc**2 *mu0 * omega) * (p11prime**2 - 1) * sp.jv(1,p11prime)**2
+    P_lambda = PI * beta / (2*kc**2 *MU_0 * omega) * (P11_PRIME**2 - 1) * sp.jv(1,P11_PRIME)**2
     power = (Q*v_perp/2.) **2 / P_lambda * (sp.jv(0, kc*center_rho)**2 + sp.jv(2, kc*center_rho)**2) * sp.jvp(1, kc*Rcycl)**2
 
     return power
