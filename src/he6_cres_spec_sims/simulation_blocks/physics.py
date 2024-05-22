@@ -28,31 +28,31 @@ class Physics:
 
         return self.bs.energy_array[beta_num]
 
-    def generate_beta_position_direction(self):
+    def generate_beta_position_direction(self, size=1):
 
         """
         Generates a random beta in the trap with pitch angle between
         min_theta and max_theta , and initial position (rho,0,z) between
         min_rho and max_rho and min_z and max_z.
-        There should be a way to vectorize this, need to manage/ connect format of outputs
         """
+
+        rho_initial = self.rho_distribution.generate(size)
+
+        # No user choice (for now)
+        phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1, size) * RAD_TO_DEG
+
+        z_initial = self.z_distribution.generate(size)
 
         min_theta = self.config.physics["min_theta"] / RAD_TO_DEG
         max_theta = self.config.physics["max_theta"] / RAD_TO_DEG
 
-        rho_initial = self.rho_distribution.generate()
-
-        # No user choice (for now)
-        phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1) * RAD_TO_DEG
-
-        z_initial = self.z_distribution.generate()
-
         u_min = (1 - np.cos(min_theta)) / 2
         u_max = (1 - np.cos(max_theta)) / 2
 
-        sphere_theta_initial = np.arccos(1 - 2 * (self.config.dist_interface.rng.uniform(u_min, u_max))) * RAD_TO_DEG
-        sphere_phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1) * RAD_TO_DEG
+        sphere_theta_initial = np.arccos(1 - 2 * (self.config.dist_interface.rng.uniform(u_min, u_max, size=size))) * RAD_TO_DEG
+        sphere_phi_initial = 2 * PI * self.config.dist_interface.rng.uniform(0, 1, size) * RAD_TO_DEG
 
+        # Each position, direction are vectors of vectors
         position = [rho_initial, phi_initial, z_initial]
         direction = [sphere_theta_initial, sphere_phi_initial]
 
