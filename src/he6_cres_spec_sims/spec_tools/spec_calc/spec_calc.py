@@ -53,8 +53,6 @@ def velocity(energy):
 
 
 # CRES functions.
-
-
 def energy_to_freq(energy, field):
 
     """Converts kinetic energy to cyclotron frequency."""
@@ -412,39 +410,6 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile):
             )
 
         return b_avg
-
-    else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
-
-@np.vectorize
-def t(energy, zpos, center_pitch_angle, rho, trap_profile):
-
-    """DEBUG(byron): This is returning negative times.
-    Calculates the time for electron to travel from z = 0 to zpos.
-    """
-
-    if trap_profile.is_trap:
-
-        if center_pitch_angle == 90.0:
-            center_pitch_angle = 89.999
-
-        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        B = lambda z: trap_profile.field_strength(rho, z)
-        Bmax = trap_profile.field_strength(rho, zmax)
-
-        # Secant of theta as function of z. Use conserved mu to derive.
-        sec_theta = lambda z: (1 - B(z) / Bmax) ** (-0.5)
-        t = (
-            1
-            / velocity(energy)
-            * integrate.quad(sec_theta, 0, zpos, epsrel=10**-2)[0]
-        )
-
-        if zpos > zmax:
-            print("ERROR: zpos equal to or larger than zmax.")
-
-        return t
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
