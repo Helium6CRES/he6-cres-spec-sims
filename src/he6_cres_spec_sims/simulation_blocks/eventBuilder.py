@@ -64,7 +64,7 @@ class EventBuilder:
                     initial_direction,
                 ) = self.physics.generate_beta_position_direction()
 
-                energy = self.physics.generate_beta_energy(beta_num)
+                energy = self.physics.generate_beta_energy()
 
                 single_segment_df = self.construct_untrapped_segment_df(
                     initial_position, initial_direction, energy, event_num, beta_num
@@ -160,11 +160,11 @@ class EventBuilder:
             "segment_num": 0,
             "event_num": event_num,
             "beta_num": beta_num,
-            "fraction_of_spectrum": self.physics.bs.fraction_of_spectrum,
-            "energy_accept_high": self.physics.bs.energy_acceptance_high,
-            "energy_accept_low": self.physics.bs.energy_acceptance_low,
-            "gamma_accept_high": sc.gamma(self.physics.bs.energy_acceptance_high),
-            "gamma_accept_low": sc.gamma(self.physics.bs.energy_acceptance_low),
+            "fraction_of_spectrum": self.physics.fraction_of_spectrum,
+            "energy_accept_high": self.physics.energy_acceptance_high,
+            "energy_accept_low": self.physics.energy_acceptance_low,
+            "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
+            "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
         }
 
         segment_df = pd.DataFrame(segment_properties, index=[event_num])

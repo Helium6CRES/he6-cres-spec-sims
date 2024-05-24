@@ -16,7 +16,7 @@ class BaseDistribution(ABC):
         cumpdf = np.cumsum(pdf(x, **kwargs))
         cumpdf -= cumpdf[0]
         cumpdf *= 1. / cumpdf[-1]
-        f = interp1d(cumulative, x)
+        f = interp1d(cumpdf, x)
         return f
 
     @abstractmethod

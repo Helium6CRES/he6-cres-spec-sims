@@ -14,8 +14,6 @@ import json
 import he6_cres_spec_sims.simulation as sim
 from he6_cres_spec_sims.simulation_blocks import Config
 
-# from .spec_tools import beta_source as source
-import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 
 #this function runs everything, previously in run_local_experiment.py script, 
@@ -149,7 +147,7 @@ class Experiment:
                 config_dict["Settings"]["rand_seed"] = None
             config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
             config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
-            config_dict["Physics"]["energy_spectrum"]["beta_source"] = str(isotope)
+            #config_dict["Physics"]["energy"]["isotope"] = str(isotope)
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
 
@@ -190,11 +188,10 @@ class ExpResults:
     experiment_params: dict
     # base_config: object
     config_paths: List[pathlib.Path]
-    sampled_gammas: pd.DataFrame
     tracks: pd.DataFrame
 
     @classmethod
-    def load(cls, experiment_config_path: str = None, include_sampled_gammas=False):
+    def load(cls, experiment_config_path: str = None):
 
         # Path to the exp_config.yaml file.
         experiment_config_path = pathlib.Path(experiment_config_path)
@@ -211,7 +208,6 @@ class ExpResults:
             "experiment_params": experiment_params,
             # "base_config": Config(experiment_params["base_config_path"]),
             "config_paths": None,
-            "sampled_gammas": None,
             "tracks": None,
         }
 
@@ -222,7 +218,6 @@ class ExpResults:
         exp_results_dict["config_paths"] = config_paths
 
         tracks_list = []
-        sampled_gammas = []
         fields = []
 
         # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
@@ -247,24 +242,12 @@ class ExpResults:
             tracks["trap_current"] = trap_current
             tracks_list.append(tracks)
 
-            if include_sampled_gammas:
-                # Get the betas that were sampled during the simulation.
-                beta_source_ne19 = source.BetaSource(config)
-                sampled_energies = beta_source_ne19.energy_array[: int(beta_num)]
-                sampled_gammas.append(sc.gamma(sampled_energies))
-                fields.append(field)
-
-        if include_sampled_gammas:
-            exp_results_dict["sampled_gammas"] = pd.DataFrame.from_dict(
-                dict(zip(fields, sampled_gammas))
-            )
         exp_results_dict["tracks"] = pd.concat(tracks_list)
 
         exp_results = cls(
             exp_results_dict["experiment_params"],
             # exp_results_dict["base_config"],
             exp_results_dict["config_paths"],
-            exp_results_dict["sampled_gammas"],
             exp_results_dict["tracks"],
         )
 

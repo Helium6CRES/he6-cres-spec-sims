@@ -1,5 +1,6 @@
 from .base_distribution import BaseDistribution
 
+from .beta_decay_distribution import BetaDecayDistribution
 from .dirac_distribution import DiracDistribution
 from .exponential_distribution import ExponentialDistribution
 from .normal_distribution import NormalDistribution
@@ -25,7 +26,9 @@ class DistributionInterface:
 
         name = yaml_block["distribution"] # name of distribution from config file
 
-        if name == "dirac" or name == "fixed":
+        if name == "beta_decay":
+            dist = BetaDecayDistribution()
+        elif name == "dirac" or name == "fixed":
             dist = DiracDistribution()
         elif name == "exponential":
             dist = ExponentialDistribution()
