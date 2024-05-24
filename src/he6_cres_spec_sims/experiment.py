@@ -9,7 +9,9 @@ from typing import List
 import yaml
 
 import he6_cres_spec_sims.simulation as sim
-from he6_cres_spec_sims.simulation_blocks import Config
+
+import he6_cres_spec_sims.simulation_blocks as sim_blocks
+import he6_cres_spec_sims.simulation_blocks.config
 
 #this function runs everything, previously in run_local_experiment.py script, 
 # putting it here allows you to more easily run experiments interactively
@@ -33,12 +35,10 @@ def run_local_experiment(dict_path):
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> Path:
-
     base_config_path = Path(experiment_params["base_config_path"])
     experiment_name = experiment_params["experiment_name"]
     parent_dir = base_config_path.parents[0]
     experiment_dir = parent_dir / experiment_name
-
     return experiment_dir
 
 # Utility function:
@@ -225,7 +225,7 @@ class ExpResults:
             print("+++++++++++++++++++++++++++++++++++++++++++++++++")
 
             # Get the simulation parameters from the config.
-            config = Config(config_path)
+            config = sim_blocks.config.Config(config_path)
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
             print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))

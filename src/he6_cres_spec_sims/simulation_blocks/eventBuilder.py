@@ -1,6 +1,6 @@
 import numpy as np
-from .physics import *
 import pandas as pd
+from .physics import *
 from he6_cres_spec_sims.constants import *
 
 class EventBuilder:

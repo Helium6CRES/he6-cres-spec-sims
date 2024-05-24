@@ -19,7 +19,15 @@ Classes contained in module:
 """
 
 import pandas as pd
+
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
+import he6_cres_spec_sims.simulation_blocks.config
+import he6_cres_spec_sims.simulation_blocks.eventBuilder
+import he6_cres_spec_sims.simulation_blocks.segmentBuilder
+import he6_cres_spec_sims.simulation_blocks.bandBuilder
+import he6_cres_spec_sims.simulation_blocks.trackBuilder
+import he6_cres_spec_sims.simulation_blocks.dmTrackBuilder
+import he6_cres_spec_sims.simulation_blocks.DAQ
 
 class Simulation:
     """ Chains together simulation blocks to run full simulation, outputs .csv of Results (defined below)
@@ -27,16 +35,16 @@ class Simulation:
 
     def __init__(self, config_path):
         self.config_path = config_path
-        self.config = sim_blocks.Config(config_path)
+        self.config = sim_blocks.config.Config(config_path)
 
     def run_full(self):
         # Initialize all simulation blocks.
-        eventbuilder = sim_blocks.EventBuilder(self.config)
-        segmentbuilder = sim_blocks.SegmentBuilder(self.config)
-        bandbuilder = sim_blocks.BandBuilder(self.config)
-        trackbuilder = sim_blocks.TrackBuilder(self.config)
-        dmtrackbuilder = sim_blocks.DMTrackBuilder(self.config)
-        daq = sim_blocks.DAQ(self.config)
+        eventbuilder = sim_blocks.eventBuilder.EventBuilder(self.config)
+        segmentbuilder = sim_blocks.segmentBuilder.SegmentBuilder(self.config)
+        bandbuilder = sim_blocks.bandBuilder.BandBuilder(self.config)
+        trackbuilder = sim_blocks.trackBuilder.TrackBuilder(self.config)
+        dmtrackbuilder = sim_blocks.dmTrackBuilder.DMTrackBuilder(self.config)
+        daq = sim_blocks.DAQ.DAQ(self.config)
 
         events = eventbuilder.run()
         segments = segmentbuilder.run(events)
