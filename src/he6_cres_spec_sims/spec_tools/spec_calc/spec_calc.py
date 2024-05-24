@@ -24,7 +24,7 @@ import numpy as np
 
 import scipy.integrate as integrate
 from scipy.fft import fft
-from scipy.optimize import fmin, fminbound
+from scipy.optimize import root_scalar
 from scipy.misc import derivative
 from scipy.special import jv
 
@@ -229,37 +229,23 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
         else:
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
-            c_r = cyc_radius(
-                energy, trap_profile.field_strength(rho, 0), center_pitch_angle
-            )
+            c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
             min_field = trap_profile.field_strength(rho_p, 0)
             max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
 
-            max_reached_field = min_field / pow(
-                math.sin(center_pitch_angle / RAD_TO_DEG), 2
-            )
+            max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
 
-            # initial guess based on treating magnetic well as v-shaped
-            slope = (max_field - min_field) / (trap_profile.trap_width[1])
-            initial_z = (max_reached_field - min_field) / slope
+            func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
 
-            if initial_z == trap_profile.trap_width[1]:
-                return initial_z
-
-            def func(z):
-                curr_field = trap_profile.field_strength(rho_p, z)
-                return abs(curr_field - max_reached_field)
-
-            max_z = fminbound(func, 0, trap_profile.trap_width[1], xtol=1e-14)
+            # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
+            solution = root_scalar(func, bracket=[0, trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
+            max_z = solution.root
             curr_field = trap_profile.field_strength(rho_p, max_z)
 
             if (curr_field > max_reached_field) and debug == True:
-                print(
-                    "Final field greater than max allowed field by: ",
-                    curr_field - max_reached_field,
-                )
+                print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
                 print("Bmax reached: ", curr_field)
 
             if debug == True:
