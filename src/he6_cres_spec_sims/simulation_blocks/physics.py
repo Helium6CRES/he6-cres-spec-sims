@@ -38,7 +38,9 @@ class Physics:
         self.energy_distribution = self.config.dist_interface.get_distribution(self.config.physics.energy)
 
         ### What to do? Not implemented for other, non-beta distributions
-        self.fraction_of_spectrum = self.energy_distribution.fraction_of_spectrum()
+        self.fraction_of_spectrum = 1.
+        if hasattr(self.energy_distribution, 'fraction_of_spectrum'):
+            self.fraction_of_spectrum = self.energy_distribution.fraction_of_spectrum()
 
         # distribution of rho positions [m]
         self.rho_distribution = self.config.dist_interface.get_distribution(self.config.physics.rho)
