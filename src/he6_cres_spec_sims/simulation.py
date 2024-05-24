@@ -1,21 +1,15 @@
 """ simulation
 
-This module contains a single class (Simulation) that links the 
-simulation blocks together. One can use the method run_full() to 
-simulate tracks as well as run those tracks through the DAQ, creating a
-.spec file. Or one can take a set of downmixed tracks previously created
-by  run_full() and saved to a .csv and run them through the DAQ, as it
-is the calculation of the track properties (axial_freq, z_max,...) that
-take the most time. 
+This module contains a single class (Simulation) that links the simulation blocks together.
+One can use the method run_full() to simulate tracks as well as run those tracks through the DAQ,
+creating a .spec file. Or one can take a set of downmixed tracks previously created by  run_full()
+and saved to a .csv and run them through the DAQ, as it is the calculation of the track properties
+(axial_freq, z_max,...) that take the most time.
 
-
-The general approach is that pandas dataframes, each row describing a
-single CRES data object (event, segment,  band, or track), are passed
-between the blocks, each block adding complexity to the simulation. This
-general structure is broken by the last two classes (Daq and
-SpecBuilder), which are responsible for creating the .spec (binary) file
-output. This .spec file can then be fed into Katydid just as real data
-would be.
+The general approach is that pandas dataframes, each row describing a single CRES data object (event, segment,
+  band, or track), are passed between the blocks, each block adding complexity to the simulation.
+ This general structure is broken by the last classe (Daq) which (optionally) creates the binary .spec(k) file
+output. This .spec(k) file can then be fed into Katydid just as real data would be.
 
 Classes contained in module: 
 
@@ -24,30 +18,21 @@ Classes contained in module:
 
 """
 
-import json
-import math
-import os
-import sys
-
 from dataclasses import dataclass
-import numpy as np
 import pandas as pd
 from pathlib import Path
-from he6_cres_spec_sims.spec_tools.spec_calc import spec_calc as sc
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 
 
 class Simulation:
-    """TODO: DOCUMENT"""
+    """ Chains together simulation blocks to run full simulation, outputs .csv of Results (defined below)
+    """
 
     def __init__(self, config_path):
-
         self.config_path = config_path
         self.config = sim_blocks.Config(config_path)
 
     def run_full(self):
-        """TODO: DOCUMENT"""
-
         # Initialize all simulation blocks.
         eventbuilder = sim_blocks.EventBuilder(self.config)
         segmentbuilder = sim_blocks.SegmentBuilder(self.config)
@@ -61,21 +46,18 @@ class Simulation:
         bands = bandbuilder.run(segments)
         tracks = trackbuilder.run(bands)
         dmtracks = dmtrackbuilder.run(tracks)
-        # Commenting out the following to make progress in other areas. 4/20/22
         spec_array = daq.run(dmtracks)
 
         # Save the results of the simulation:
-        # For now as of 11/15/22 I am only writing dmtracks to keep things
-        # lightweight.
+        # For now only write dmtracks to keep things lightweight.
         results = Results(dmtracks)
         results.save(self.config_path)
 
         return None
 
     def run_daq(self):
-        """TODO: Document"""
-
-        # Load existing data using Results class.
+        """ Load existing data using Results class (skipping regenerating betas)
+        """
         try:
             results = Results.load(self.config_path)
         except Exception as e:
@@ -95,15 +77,15 @@ class Simulation:
 
 @dataclass
 class Results:
+    """ Pair of functions (save/ load) that writes the results (currently dmtracks dataFrame)
+        to and from a csv with a set name
+    """
 
     dmtracks: pd.DataFrame
 
     def save(self, config_path):
-        # 11/15/22: Not writing these other outputs to make the
-        # simulations more lightweight.
-        results_dict = {
-            "dmtracks": self.dmtracks,
-        }
+        # Only writing these dmtracks to make the simulations more lightweight
+        results_dict = { "dmtracks": self.dmtracks }
 
         # First make a results_dir with the same name as the config.
         config_path = Path(config_path)
@@ -111,16 +93,13 @@ class Results:
         parent_dir = config_path.parents[0]
         results_dir = parent_dir / config_name
 
-        exists = results_dir.is_dir()
-
         # If results_dir doesn't exist, then create it.
-        if not exists:
+        if not results_dir.is_dir():
             results_dir.mkdir()
             print("created directory : ", results_dir)
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
-
             try:
                 data.to_csv(results_dir / "{}.csv".format(data_name))
             except Exception as e:
@@ -129,9 +108,7 @@ class Results:
 
     @classmethod
     def load(cls, config_path):
-        results_dict = {
-            "dmtracks": None,
-        }
+        results_dict = { "dmtracks": None }
         # Load results.
         # First make a results directory with the same name as the config.
         config_name = config_path.stem
@@ -139,19 +116,14 @@ class Results:
         results_dir = parent_dir / "{}".format(config_name)
 
         for data_name, data in results_dict.items():
-
             try:
-                df = pd.read_csv(
-                    results_dir / "{}.csv".format(data_name), index_col=[0]
-                )
+                df = pd.read_csv( results_dir / "{}.csv".format(data_name), index_col=[0])
                 results_dict[data_name] = df
 
             except Exception as e:
                 print("Unable to load {} data.".format(data_name))
                 raise e
 
-        results = cls(
-            results_dict["dmtracks"],
-        )
+        results = cls(results_dict["dmtracks"])
 
         return results
