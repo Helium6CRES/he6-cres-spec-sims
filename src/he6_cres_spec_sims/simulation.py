@@ -18,11 +18,8 @@ Classes contained in module:
 
 """
 
-from dataclasses import dataclass
 import pandas as pd
-from pathlib import Path
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
-
 
 class Simulation:
     """ Chains together simulation blocks to run full simulation, outputs .csv of Results (defined below)
@@ -74,24 +71,26 @@ class Simulation:
 
         return None
 
-
-@dataclass
 class Results:
     """ Pair of functions (save/ load) that writes the results (currently dmtracks dataFrame)
         to and from a csv with a set name
     """
 
-    dmtracks: pd.DataFrame
+    def __init__(self, dmtracks):
+        self.dmtracks = dmtracks
+
+    def get_path_name(self, config_path):
+        config_name = config_path.stem
+        parent_dir = config_path.parents[0]
+        results_dir = parent_dir / "{}".format(config_name)
+        return results_dir
 
     def save(self, config_path):
         # Only writing these dmtracks to make the simulations more lightweight
         results_dict = { "dmtracks": self.dmtracks }
 
         # First make a results_dir with the same name as the config.
-        config_path = Path(config_path)
-        config_name = config_path.stem
-        parent_dir = config_path.parents[0]
-        results_dir = parent_dir / config_name
+        results_dir = self.get_path_name(config_path)
 
         # If results_dir doesn't exist, then create it.
         if not results_dir.is_dir():
@@ -106,15 +105,10 @@ class Results:
                 print("Unable to write {} data.".format(data_name))
                 raise e
 
-    @classmethod
-    def load(cls, config_path):
+    def load(self, config_path):
         results_dict = { "dmtracks": None }
         # Load results.
-        # First make a results directory with the same name as the config.
-        config_name = config_path.stem
-        parent_dir = config_path.parents[0]
-        results_dir = parent_dir / "{}".format(config_name)
-
+        results_dir = self.get_path_name(config_path)
         for data_name, data in results_dict.items():
             try:
                 df = pd.read_csv( results_dir / "{}.csv".format(data_name), index_col=[0])
@@ -124,6 +118,6 @@ class Results:
                 print("Unable to load {} data.".format(data_name))
                 raise e
 
-        results = cls(results_dict["dmtracks"])
+        results = results_dict["dmtracks"]
 
         return results
