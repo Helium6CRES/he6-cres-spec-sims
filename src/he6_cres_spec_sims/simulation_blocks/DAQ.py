@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from time import process_time
 
+from he6_cres_spec_sims.constants import *
+
 class DAQ:
     """  If desired, passes through list of produced downmixed tracks through DAQ, producing fake .spec(k) files
          These can be passed through Katydid, identically to data
@@ -17,15 +19,12 @@ class DAQ:
         self.delta_t = 1 / self.delta_f
         self.slice_time = self.delta_t * self.config.daq.roach_avg
         self.pts_per_fft = config.daq.freq_bins * 2
-        self.freq_axis = np.linspace(
-            0, self.config.daq.freq_bw, self.config.daq.freq_bins
-        )
+        self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
 
         self.antenna_z = 50  # Ohms
 
-        self.slices_in_spec = int(
-            config.daq.spec_length / self.delta_t / self.config.daq.roach_avg
-        )
+        self.slices_in_spec = int( config.daq.spec_length / self.delta_t / self.config.daq.roach_avg)
+
         # This block size is used to create chunks of spec file that don't overhwelm the ram.
         self.slice_block = int(50 * 32768 / config.daq.freq_bins)
 
@@ -37,12 +36,8 @@ class DAQ:
 
         # Divide the noise_mean_func by the roach_avg.
         # Need to add in U vs I side here.
-        self.noise_mean_func = interpolate.interp1d(
-            self.gain_noise.freq, self.gain_noise.noise_mean
-        )
-        self.gain_func = interpolate.interp1d(
-            self.gain_noise.freq, self.gain_noise.gain
-        )
+        self.noise_mean_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.noise_mean)
+        self.gain_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.gain)
 
         self.noise_array = self.build_noise_floor_array()
 
@@ -53,25 +48,21 @@ class DAQ:
         self.tracks = downmixed_tracks_df
         self.build_results_dir()
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
-        self.build_spec_file_paths()
-        self.build_empty_spec_files()
+        self.spec_file_paths = self.build_file_paths(self.n_spec_files, self.spec_files_dir, "spec")
+        self.build_empty_files(self.spec_file_paths)
 
-        # Define a random phase for each band (multiplied by 2 pi at use).
-        self.phase = self.config.dist_interface.rng.uniform(size=len(self.tracks))
+        # Define a random phase for each band
+        self.phase = self.config.dist_interface.rng.uniform(0, 2*PI, size=len(self.tracks))
 
         if self.config.daq.build_labels:
             self.build_label_file_paths()
-            self.build_empty_label_files()
+            self.label_file_paths = self.build_file_paths(self.n_label_files, self.label_files_dir, "label")
+            self.build_empty_files(self.label_file_paths)
 
         for file_in_acq in range(self.n_spec_files):
-            print(
-                f"Building spec file {file_in_acq}. {self.config.daq.spec_length} s, {self.slices_in_spec} slices."
-            )
+            print( f"Building spec file {file_in_acq}. {self.config.daq.spec_length} s, {self.slices_in_spec} slices.")
             build_file_start = process_time()
-            for i, start_slice in enumerate(
-                np.arange(0, self.slices_in_spec, self.slice_block)
-            ):
-
+            for i, start_slice in enumerate( np.arange(0, self.slices_in_spec, self.slice_block)):
                 # Iterate by the slice_block until you hit the end of the spec file.
                 stop_slice = min(start_slice + self.slice_block, self.slices_in_spec)
                 # This is the number of slices before averaging roach+avg slices together.
@@ -81,9 +72,7 @@ class DAQ:
                 self.config.dist_interface.rng.shuffle(noise_array)
                 noise_array = noise_array[: num_slices]
 
-                signal_array = self.build_signal_chunk(
-                    file_in_acq, start_slice, stop_slice
-                )
+                signal_array = self.build_signal_chunk( file_in_acq, start_slice, stop_slice)
 
                 requant_gain_scaling = 2**self.config.daq.requant_gain
 
@@ -103,14 +92,10 @@ class DAQ:
                 self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
 
                 if self.config.daq.build_labels:
-                    self.write_to_spec(
-                        self.label_array, self.label_file_paths[file_in_acq]
-                    )
+                    self.write_to_spec( self.label_array, self.label_file_paths[file_in_acq])
 
             build_file_stop = process_time()
-            print(
-                f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n"
-            )
+            print( f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n")
 
         print("Done building spec files. ")
         return None
@@ -214,7 +199,7 @@ class DAQ:
                 + slope[condition, :] / 2 * (t - time_start[condition, :])
             )
             * (2 * np.pi * ((t - time_start[condition, :])))
-            + (2 * np.pi * band_phase[condition, :])
+            + band_phase[condition, :]
         )
 
         if self.config.daq.build_labels:
@@ -223,25 +208,19 @@ class DAQ:
             # Conduct a 1d FFT along axis = 0 (the time axis). This is less efficient than what is found in the
             # else statement but this is necessary to extract the label info.
             # shape of fft (pts_per_fft, num_tracks_alive_in_block, num_slices)
-            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[
-                : self.pts_per_fft // 2
-            ]
+            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[ : self.pts_per_fft // 2 ]
             fft = np.transpose(fft, (1, 0, 2))
 
             labels = np.abs(self.tracks.band_num.to_numpy()) + 1
             target = np.zeros((fft.shape[1:]))
 
             for i, alive_track_fft in enumerate(fft):
-
                 # How to create this mask is a bit tricky. Not sure what factor to use.
                 # This is harder than expected due to the natural fluctuations in bin power.
                 # I'm not getting continuous masks. One idea is to make the mask condition column-wise...
                 # Needs to be the magnitude!! Ok.
                 # Keep the axis =0 max because this makes the labels robust against SNR fluctuations across the track.
-                mask = (np.abs(alive_track_fft) ** 2) > (
-                    np.abs(alive_track_fft) ** 2
-                ).max(axis=0) / 10
-
+                mask = (np.abs(alive_track_fft) ** 2) > ( np.abs(alive_track_fft) ** 2).max(axis=0) / 10
                 target[mask] = labels[condition][i]
 
             # Don't actually average or the labels will get weird. Just sample according to the roach_avg
@@ -255,9 +234,7 @@ class DAQ:
             signal_time_series = signal_time_series.sum(axis=1)
 
             # shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
-            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[
-                : self.pts_per_fft // 2
-            ]
+            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
 
         signal_array = np.real(fft)**2
 
@@ -270,8 +247,6 @@ class DAQ:
         Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
         worth of data.
         """
-        # print("Writing to file path: {}\n".format(spec_file_path))
-
         # Make spec file:
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
@@ -284,7 +259,6 @@ class DAQ:
 
         # Pass "ab" to append to a binary file
         with open(spec_file_path, "ab") as spec_file:
-
             # Write data to spec_file.
             data.tofile(spec_file)
 
@@ -296,9 +270,7 @@ class DAQ:
         Note that this only works for roach avg = 2 at this point.
         """
 
-        self.freq_axis = np.linspace(
-            0, self.config.daq.freq_bw, self.config.daq.freq_bins
-        )
+        self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
 
         delta_f_12 = 2.4e9 / 2**13
 
@@ -318,83 +290,41 @@ class DAQ:
 
         return noise_array
 
-    def build_spec_file_paths(self):
+    def build_file_paths(self, n_files, files_dir, file_label):
+        file_paths = []
+        for idx in range(n_files):
+            file_path = files_dir / "{}_{}_{}.spec".format( self.config.daq.spec_prefix, file_label, idx)
+            file_paths.append(file_path)
+        return file_paths
 
-        spec_file_paths = []
-        for idx in range(self.n_spec_files):
-
-            spec_path = self.spec_files_dir / "{}_spec_{}.spec".format(
-                self.config.daq.spec_prefix, idx
-            )
-            spec_file_paths.append(spec_path)
-
-        self.spec_file_paths = spec_file_paths
-
-        return None
-
-    def build_label_file_paths(self):
-
-        label_file_paths = []
-        for idx in range(self.n_spec_files):
-
-            spec_path = self.label_files_dir / "{}_label_{}.spec".format(
-                self.config.daq.spec_prefix, idx
-            )
-            label_file_paths.append(spec_path)
-
-        self.label_file_paths = label_file_paths
-
-        return None
+    def safe_mkdir(self, new_dir):
+        # If new_dir doesn't exist, then create it.
+        if not new_dir.is_dir():
+            new_dir.mkdir()
+            print("created directory : ", new_dir)
 
     def build_results_dir(self):
-
         # First make a results_dir with the same name as the config.
         config_name = self.config.config_path.stem
         parent_dir = self.config.config_path.parents[0]
 
         self.results_dir = parent_dir / config_name
-
-        # If results_dir doesn't exist, then create it.
-        if not self.results_dir.is_dir():
-            self.results_dir.mkdir()
-            print("created directory : ", self.results_dir)
+        self.safe_mkdir(self.results_dir)
 
         self.spec_files_dir = self.results_dir / "spec_files"
-
-        # If spec_files_dir doesn't exist, then create it.
-        if not self.spec_files_dir.is_dir():
-            self.spec_files_dir.mkdir()
-            print("created directory : ", self.spec_files_dir)
+        self.safe_mkdir(self.spec_files_dir)
 
         if self.config.daq.build_labels:
-
             self.label_files_dir = parent_dir / config_name / "label_files"
+            self.safe_mkdir(self.labels_files_dir)
 
-            # If spec_files_dir doesn't exist, then create it.
-            if not self.label_files_dir.is_dir():
-                self.label_files_dir.mkdir()
-                print("created directory : ", self.label_files_dir)
-
-        return None
-
-    def build_empty_spec_files(self):
+    def build_empty_files(self, files):
         """
-        Build empty spec files to be filled with data or labels.
+        Build empty files to be filled with data or labels.
         """
         # Pass "wb" to write a binary file. But here we just build the files.
-        for idx, spec_file_path in enumerate(self.spec_file_paths):
-            with open(spec_file_path, "wb") as spec_file:
-                pass
-
-        return None
-
-    def build_empty_label_files(self):
-        """
-        Build empty spec files to be filled with data or labels.
-        """
-        # Pass "wb" to write a binary file. But here we just build the files.
-        for idx, spec_file_path in enumerate(self.label_file_paths):
-            with open(spec_file_path, "wb") as spec_file:
+        for idx, file_path in enumerate(files):
+            with open(file_path, "wb") as file:
                 pass
 
         return None
@@ -409,12 +339,9 @@ class DAQ:
         return None
 
     def roach_slice_avg(self, signal_array):
-
         N = int(self.config.daq.roach_avg)
-
         if self.config.daq.roach_inverted_flag == True:
             result = signal_array[::N]
-
         else:
             if signal_array.shape[0] % 2 == 0:
                 result = signal_array[1::2] + signal_array[::2]
@@ -422,38 +349,3 @@ class DAQ:
                 result = signal_array[1::2] + signal_array[:-1:2]
 
         return result
-
-    def spec_to_array(
-        self, spec_path, slices=-1, packets_per_slice=1, start_packet=None
-    ):
-        """
-        TODO: Document.
-        Making this just work for one packet per spectrum because that works for simulation in Katydid.
-        * Make another function that works with 4 packets per spectrum (for reading the Kr data).
-        """
-
-        BYTES_IN_PAYLOAD = self.config.daq.freq_bins
-        BYTES_IN_HEADER = 32
-        BYTES_IN_PACKET = BYTES_IN_PAYLOAD + BYTES_IN_HEADER
-
-        if slices == -1:
-            spec_array = np.fromfile(spec_path, dtype="uint8", count=-1).reshape(
-                (-1, BYTES_IN_PACKET)
-            )[:, BYTES_IN_HEADER:]
-        else:
-            spec_array = np.fromfile(
-                spec_path, dtype="uint8", count=BYTES_IN_PAYLOAD * slices
-            ).reshape((-1, BYTES_IN_PACKET))[:, BYTES_IN_HEADER:]
-
-        if packets_per_slice > 1:
-
-            spec_flat_list = [
-                spec_array[(start_packet + i) % packets_per_slice :: packets_per_slice]
-                for i in range(packets_per_slice)
-            ]
-            spec_flat = np.concatenate(spec_flat_list, axis=1)
-            spec_array = spec_flat
-
-        print(spec_array.shape)
-
-        return spec_array

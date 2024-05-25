@@ -16,11 +16,8 @@ class BandBuilder:
         magnetic_modulation = self.config.bandbuilder.magnetic_modulation
         harmonic_sidebands = self.config.bandbuilder.harmonic_sidebands
 
-        frac_total_segment_power_cut = (
-            self.config.bandbuilder.frac_total_segment_power_cut
-        )
+        frac_total_segment_power_cut = self.config.bandbuilder.frac_total_segment_power_cut
         total_band_num = sideband_num * 2 + 1
-
         band_list = []
 
         for segment_index, row in segments_df.iterrows():
@@ -61,9 +58,7 @@ class BandBuilder:
                     # TODO: properly determine band power stop.
                     row_copy["avg_cycl_freq"] = sideband_amplitudes[i][0]
                     # Note that the sideband amplitudes need to be squared to give power.
-                    row_copy["band_power_start"] = (
-                        sideband_amplitudes[i][1] ** 2 * row.segment_power
-                    )
+                    row_copy["band_power_start"] = sideband_amplitudes[i][1] ** 2 * row.segment_power
                     row_copy["band_power_stop"] = row_copy["band_power_start"]
                     row_copy["band_num"] = band_num
 

@@ -44,7 +44,7 @@ class SegmentBuilder:
             phi_dir = event["initial_phi_dir"]
 
             # Extract necessary parameters from event.
-            # TODO(byron): Note that it is slightly incorrect to assume the power doesn't change as time passes.
+            # TODO: Note that it is slightly incorrect to assume the power doesn't change as time passes.
             energy = event["energy"]
             energy_stop = event["energy_stop"]
             event_num = event["event_num"]
@@ -65,11 +65,6 @@ class SegmentBuilder:
             while True:
 
                 if jump_num >= self.config.segmentbuilder.jump_num_max:
-                    # print(
-                    #     "Event reached jump_num_max : {}".format(
-                    #         self.config.segmentbuilder.jump_num_max
-                    #     )
-                    # )
                     break
 
                 print("Jump: {jump_num}".format(jump_num=jump_num))
@@ -88,28 +83,17 @@ class SegmentBuilder:
                 if not is_trapped:
                     print("Event no longer trapped.")
                     break
-                # if jump_num > self.config.segmentbuilder.jump_num_max:
-                #     print(
-                #         "Event reached jump_num_max : {}".format(
-                #             self.config.segmentbuilder.jump_num_max
-                #         )
-                #     )
-                #     break
 
                 scattered_segment_df["segment_num"] = jump_num
                 scattered_segment_df["segment_length"] = self.segment_length_distribution.generate()
                 scattered_segment_df = self.fill_in_properties(scattered_segment_df)
 
-                scattered_segments_list.append(
-                    scattered_segment_df.iloc[0].values.tolist()
-                )
+                scattered_segments_list.append(scattered_segment_df.iloc[0].values.tolist())
 
                 # reset energy_stop, so that the next segment can be scattered based on this energy.
                 energy_stop = scattered_segment_df["energy_stop"]
 
-        scattered_df = pd.DataFrame(
-            scattered_segments_list, columns=trapped_event_df.columns
-        )
+        scattered_df = pd.DataFrame(scattered_segments_list, columns=trapped_event_df.columns)
 
         return scattered_df
     
@@ -165,8 +149,9 @@ class SegmentBuilder:
         return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num, beta_num), center_theta
 
     def fill_in_properties(self, incomplete_scattered_segments_df):
-
-        """DOCUMENT LATER"""
+        """ Assigns calculated properties (e.g. axial frequency, power, slope, etc.)
+            to beta with given (E, theta, rho) in the magnetic field profile
+        """
 
         df = incomplete_scattered_segments_df.copy()
         trap_profile = self.config.trap_profile
@@ -174,20 +159,14 @@ class SegmentBuilder:
         decay_cell_radius = self.config.eventbuilder.decay_cell_radius
 
         # Calculate all relevant segment parameters. Order matters here.
-        axial_freq = sc.axial_freq(
-            df["energy"], df["center_theta"], df["rho_center"], trap_profile
-        )
+        axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
-        b_avg = sc.b_avg(
-            df["energy"], df["center_theta"], df["rho_center"], trap_profile
-        )
+        b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
-
-        zmax = sc.max_zpos(
-            df["energy"], df["center_theta"], df["rho_center"], trap_profile
-        )
+        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
+
         segment_radiated_power_te11 = (
             pc.power_calc(
                 df["center_x"],
@@ -201,13 +180,9 @@ class SegmentBuilder:
 
         segment_radiated_power_tot = sc.power_larmor(main_field, avg_cycl_freq)
 
-        # slope = sc.df_dt(
-        #     df["energy"], self.config.eventbuilder.main_field, segment_radiated_power
-        # )
+        # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
 
-        energy_stop = (
-            df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV
-        )
+        energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
 
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
@@ -215,9 +190,7 @@ class SegmentBuilder:
         elif energy_stop < 0:
             energy_stop = 1e-10
 
-        freq_stop = sc.avg_cycl_freq(
-            energy_stop, df["center_theta"], df["rho_center"], trap_profile
-        )
+        freq_stop = sc.avg_cycl_freq( energy_stop, df["center_theta"], df["rho_center"], trap_profile)
         slope = (freq_stop - avg_cycl_freq) / df["segment_length"]
 
         segment_power = segment_radiated_power_te11 / 2
