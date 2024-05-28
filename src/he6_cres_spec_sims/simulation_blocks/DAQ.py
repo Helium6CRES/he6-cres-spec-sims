@@ -86,12 +86,18 @@ class DAQ:
                 spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
-                self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
+                if self.config.daq.spec_suffix == "spec":
+                    self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
+
+                elif self.config.daq.spec_suffix == "speck":
+                    self.write_to_speck(spec_array, self.spec_file_paths[file_in_acq])
+                else:
+                    raise ValueError('Invalid spec_suffix: spec || speck')
 
             build_file_stop = process_time()
             print( f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n")
 
-        print("Done building spec files. ")
+        print("Done building {} files. ".format(self.config.daq.spec_suffix))
         return None
 
     def build_signal_chunk(self, file_in_acq, start_slice, stop_slice):
@@ -230,6 +236,56 @@ class DAQ:
 
         return None
 
+    def add_high_power_point(self, frequency_bin):
+        #aIndex (0 - 4095) is a 12-bit number, does not fit in a byte.
+        #Fit in 2 bytes via: index = 2^8 a[0] + a[1]
+        #Fourier power then takes up 1 more byte, we know it can't be 0 (given threshold)
+
+        aOnes = frequency_bin % 256
+        aTens = (frequency_bin - aOnes) // 256
+
+        return [aTens, aOnes]
+
+    def write_to_speck(self, spec_array, speck_file_path):
+        """
+        Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
+        worth of data.
+        """
+        # Make spec file:
+        slices_in_spec, freq_bins_in_spec = spec_array.shape
+
+        # Append empty (zero) header to the spec array.
+        header = np.zeros(32)
+
+        # Append empty (zero) header to the spec array.
+        footer = np.zeros(3)
+
+        if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
+                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
+
+        thresholds = np.mean(self.noise_array, axis=0) * self.config.daq.threshold_factor
+        data = np.array([])
+
+        # Pass "ab" to append to a binary file
+        counter = 0
+        with open(speck_file_path, "ab") as speck_file:
+            for s in range(slices_in_spec):
+                data = np.append(data, header)
+                for j in range(freq_bins_in_spec):
+                    if int(spec_array[s][j]) > thresholds[j]:
+                        data = np.append(data, self.add_high_power_point(j))
+                        data = np.append(data, spec_array[s][j])
+                        counter +=1
+                data = np.append(data, footer)
+
+            data = data.flatten().astype("uint8")
+            data.tofile(speck_file)
+
+        #print("counter: "+str(counter))
+
+        return None
+
+
     def build_noise_floor_array(self):
         """
         Build a noise floor array with self.slice_block slices.
@@ -259,7 +315,7 @@ class DAQ:
     def build_file_paths(self, n_files, files_dir, file_label):
         file_paths = []
         for idx in range(n_files):
-            file_path = files_dir / "{}_{}_{}.spec".format( self.config.daq.spec_prefix, file_label, idx)
+            file_path = files_dir / "{}_{}_{}.{}".format( self.config.daq.spec_prefix, file_label, idx, self.config.daq.spec_suffix)
             file_paths.append(file_path)
         return file_paths
 
