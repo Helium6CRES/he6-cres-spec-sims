@@ -25,7 +25,7 @@ class DAQ:
 
         self.slices_in_spec = int( config.daq.spec_length / self.delta_t / self.config.daq.roach_avg)
 
-        # This block size is used to create chunks of spec file that don't overhwelm the ram.
+        # This block size is used to create chunks of spec file that don't overwhelm the ram.
         self.slice_block = int(50 * 32768 / config.daq.freq_bins)
 
         # Get date for building out spec file paths.
@@ -46,10 +46,10 @@ class DAQ:
         This function is responsible for building out the spec files and calling the below methods.
         """
         self.tracks = downmixed_tracks_df
-        self.build_results_dir()
+        self.create_results_dir()
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
         self.spec_file_paths = self.build_file_paths(self.n_spec_files, self.spec_files_dir, "spec")
-        self.build_empty_files(self.spec_file_paths)
+        self.write_empty_files(self.spec_file_paths)
 
         # Define a random phase for each band
         # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from initial particle position
@@ -214,78 +214,6 @@ class DAQ:
 
         return signal_array.T
 
-    def write_to_spec(self, spec_array, spec_file_path):
-        """
-        Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
-        worth of data.
-        """
-        # Make spec file:
-        slices_in_spec, freq_bins_in_spec = spec_array.shape
-
-        zero_hdrs = np.zeros((slices_in_spec, 32))
-
-        # Append empty (zero) headers to the spec array.
-        spec_array_hdrs = np.hstack((zero_hdrs, spec_array))
-
-        data = spec_array_hdrs.flatten().astype("uint8")
-
-        # Pass "ab" to append to a binary file
-        with open(spec_file_path, "ab") as spec_file:
-            # Write data to spec_file.
-            data.tofile(spec_file)
-
-        return None
-
-    def add_high_power_point(self, frequency_bin):
-        #aIndex (0 - 4095) is a 12-bit number, does not fit in a byte.
-        #Fit in 2 bytes via: index = 2^8 a[0] + a[1]
-        #Fourier power then takes up 1 more byte, we know it can't be 0 (given threshold)
-
-        aOnes = frequency_bin % 256
-        aTens = (frequency_bin - aOnes) // 256
-
-        return [aTens, aOnes]
-
-    def write_to_speck(self, spec_array, speck_file_path):
-        """
-        Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
-        worth of data.
-        """
-        # Make spec file:
-        slices_in_spec, freq_bins_in_spec = spec_array.shape
-
-        # Append empty (zero) header to the spec array.
-        header = np.zeros(32)
-
-        # Append empty (zero) header to the spec array.
-        footer = np.zeros(3)
-
-        if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
-                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
-
-        thresholds = np.mean(self.noise_array, axis=0) * self.config.daq.threshold_factor
-        data = np.array([])
-
-        # Pass "ab" to append to a binary file
-        counter = 0
-        with open(speck_file_path, "ab") as speck_file:
-            for s in range(slices_in_spec):
-                data = np.append(data, header)
-                for j in range(freq_bins_in_spec):
-                    if int(spec_array[s][j]) > thresholds[j]:
-                        data = np.append(data, self.add_high_power_point(j))
-                        data = np.append(data, spec_array[s][j])
-                        counter +=1
-                data = np.append(data, footer)
-
-            data = data.flatten().astype("uint8")
-            data.tofile(speck_file)
-
-        #print("counter: "+str(counter))
-
-        return None
-
-
     def build_noise_floor_array(self):
         """
         Build a noise floor array with self.slice_block slices.
@@ -312,6 +240,20 @@ class DAQ:
 
         return noise_array
 
+    def roach_slice_avg(self, signal_array):
+        N = int(self.config.daq.roach_avg)
+        if self.config.daq.roach_inverted_flag == True:
+            result = signal_array[::N]
+        else:
+            if signal_array.shape[0] % 2 == 0:
+                result = signal_array[1::2] + signal_array[::2]
+            else:
+                result = signal_array[1::2] + signal_array[:-1:2]
+
+        return result
+
+    #################### File Writing Utilities ####################
+
     def build_file_paths(self, n_files, files_dir, file_label):
         file_paths = []
         for idx in range(n_files):
@@ -325,7 +267,7 @@ class DAQ:
             new_dir.mkdir()
             print("created directory : ", new_dir)
 
-    def build_results_dir(self):
+    def create_results_dir(self):
         # First make a results_dir with the same name as the config.
         config_name = self.config.config_path.stem
         parent_dir = self.config.config_path.parents[0]
@@ -336,25 +278,75 @@ class DAQ:
         self.spec_files_dir = self.results_dir / "spec_files"
         self.safe_mkdir(self.spec_files_dir)
 
-    def build_empty_files(self, files):
+    def write_empty_files(self, files):
         """
-        Build empty files to be filled with data
+        Create empty files to be filled with data (to be appended later)
         """
-        # Pass "wb" to write a binary file. But here we just build the files.
-        for idx, file_path in enumerate(files):
-            with open(file_path, "wb") as file:
-                pass
+        for file_path in files:
+            open(file_path, "wb")
+
+    def write_to_spec(self, spec_array, spec_file_path):
+        """
+        Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
+        worth of data.
+        """
+        # Make spec file:
+        slices_in_spec, freq_bins_in_spec = spec_array.shape
+
+        zero_hdrs = np.zeros((slices_in_spec, 32))
+
+        # Append empty (zero) headers to the spec array.
+        spec_array_hdrs = np.hstack((zero_hdrs, spec_array))
+
+        data = spec_array_hdrs.flatten().astype("uint8")
+
+        # Pass "ab" to append to a binary file
+        with open(spec_file_path, "ab") as spec_file:
+            # Write data to spec_file.
+            data.tofile(spec_file)
 
         return None
 
-    def roach_slice_avg(self, signal_array):
-        N = int(self.config.daq.roach_avg)
-        if self.config.daq.roach_inverted_flag == True:
-            result = signal_array[::N]
-        else:
-            if signal_array.shape[0] % 2 == 0:
-                result = signal_array[1::2] + signal_array[::2]
-            else:
-                result = signal_array[1::2] + signal_array[:-1:2]
+    def add_high_power_point(self, frequency_bin):
+        # We want to write (bin number, power) to zero-suppressed file
+        # aIndex (0 - 4095) is a 12-bit number, does not fit in a byte.
+        # Fit in 2 bytes via: index = 2^8 a[0] + a[1]
 
-        return result
+        aOnes = frequency_bin % 256
+        aTens = (frequency_bin - aOnes) // 256
+
+        return [aTens, aOnes]
+
+    def write_to_speck(self, spec_array, speck_file_path):
+        """
+        Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
+        worth of data.
+        """
+        slices_in_spec, freq_bins_in_spec = spec_array.shape
+
+        # Append empty (zero) packet header to data 
+        header = np.zeros(32)
+
+        # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
+        footer = np.zeros(3)
+
+        if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
+                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
+
+        thresholds = np.mean(self.noise_array, axis=0) * self.config.daq.threshold_factor
+        data = np.array([])
+
+        # Pass "ab" to append to a binary file
+        with open(speck_file_path, "ab") as speck_file:
+            for s in range(slices_in_spec):
+                data = np.append(data, header)
+                for j in range(freq_bins_in_spec):
+                    if int(spec_array[s][j]) > thresholds[j]:
+                        data = np.append(data, self.add_high_power_point(j))
+                        data = np.append(data, spec_array[s][j])
+                data = np.append(data, footer)
+
+            data = data.flatten().astype("uint8")
+            data.tofile(speck_file)
+
+        return None
