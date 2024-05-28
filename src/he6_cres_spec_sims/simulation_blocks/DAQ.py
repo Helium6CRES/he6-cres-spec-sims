@@ -52,12 +52,9 @@ class DAQ:
         self.build_empty_files(self.spec_file_paths)
 
         # Define a random phase for each band
+        # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from initial particle position
+        # in cyclotron motion. Inter-band phases are correlated depending on z0.
         self.phase = self.config.dist_interface.rng.uniform(0, 2*PI, size=len(self.tracks))
-
-        if self.config.daq.build_labels:
-            self.build_label_file_paths()
-            self.label_file_paths = self.build_file_paths(self.n_label_files, self.label_files_dir, "label")
-            self.build_empty_files(self.label_file_paths)
 
         for file_in_acq in range(self.n_spec_files):
             print( f"Building spec file {file_in_acq}. {self.config.daq.spec_length} s, {self.slices_in_spec} slices.")
@@ -90,9 +87,6 @@ class DAQ:
 
                 # Write chunk to spec file.
                 self.write_to_spec(spec_array, self.spec_file_paths[file_in_acq])
-
-                if self.config.daq.build_labels:
-                    self.write_to_spec( self.label_array, self.label_file_paths[file_in_acq])
 
             build_file_stop = process_time()
             print( f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n")
@@ -202,39 +196,11 @@ class DAQ:
             + band_phase[condition, :]
         )
 
-        if self.config.daq.build_labels:
+        # shape of signal_time_series: (pts_per_fft, num_slices).
+        signal_time_series = signal_time_series.sum(axis=1)
 
-            # shape of signal_time_series: (pts_per_fft, num_tracks_alive_in_block, num_slices).
-            # Conduct a 1d FFT along axis = 0 (the time axis). This is less efficient than what is found in the
-            # else statement but this is necessary to extract the label info.
-            # shape of fft (pts_per_fft, num_tracks_alive_in_block, num_slices)
-            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[ : self.pts_per_fft // 2 ]
-            fft = np.transpose(fft, (1, 0, 2))
-
-            labels = np.abs(self.tracks.band_num.to_numpy()) + 1
-            target = np.zeros((fft.shape[1:]))
-
-            for i, alive_track_fft in enumerate(fft):
-                # How to create this mask is a bit tricky. Not sure what factor to use.
-                # This is harder than expected due to the natural fluctuations in bin power.
-                # I'm not getting continuous masks. One idea is to make the mask condition column-wise...
-                # Needs to be the magnitude!! Ok.
-                # Keep the axis =0 max because this makes the labels robust against SNR fluctuations across the track.
-                mask = (np.abs(alive_track_fft) ** 2) > ( np.abs(alive_track_fft) ** 2).max(axis=0) / 10
-                target[mask] = labels[condition][i]
-
-            # Don't actually average or the labels will get weird. Just sample according to the roach_avg
-            label_array = target.T[:: self.config.daq.roach_avg]
-
-            self.label_array = label_array
-            fft = fft.sum(axis=0)
-
-        else:
-            # shape of signal_time_series: (pts_per_fft, num_slices).
-            signal_time_series = signal_time_series.sum(axis=1)
-
-            # shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
-            fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
+        # shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
+        fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
 
         signal_array = np.real(fft)**2
 
@@ -314,28 +280,15 @@ class DAQ:
         self.spec_files_dir = self.results_dir / "spec_files"
         self.safe_mkdir(self.spec_files_dir)
 
-        if self.config.daq.build_labels:
-            self.label_files_dir = parent_dir / config_name / "label_files"
-            self.safe_mkdir(self.labels_files_dir)
-
     def build_empty_files(self, files):
         """
-        Build empty files to be filled with data or labels.
+        Build empty files to be filled with data
         """
         # Pass "wb" to write a binary file. But here we just build the files.
         for idx, file_path in enumerate(files):
             with open(file_path, "wb") as file:
                 pass
 
-        return None
-
-    def build_labels(self):
-        """
-        This may need to just be a flag... Should I write these to spec files as well?
-        One could imagine that then the preprocessing is to do a maxpool on everything as we read it in? Then build a smaller
-        more manageable array that's still 1s worth of data. That could be nice.
-        Should think about how to get the spec files into arrays. Maybe this should be a method of the results class?
-        """
         return None
 
     def roach_slice_avg(self, signal_array):
