@@ -39,8 +39,6 @@ class DAQ:
         self.noise_mean_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.noise_mean)
         self.gain_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.gain)
 
-        self.noise_array = self.build_noise_floor_array()
-
     def run(self, downmixed_tracks_df):
         """
         This function is responsible for building out the spec files and calling the below methods.
@@ -51,39 +49,28 @@ class DAQ:
         self.spec_file_paths = self.build_file_paths(self.n_spec_files, self.spec_files_dir, "spec")
         self.write_empty_files(self.spec_file_paths)
 
-        # Define a random phase for each band
-        # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from initial particle position
-        # in cyclotron motion. Inter-band phases are correlated depending on z0.
-        self.phase = self.config.dist_interface.rng.uniform(0, 2*PI, size=len(self.tracks))
+        # TODO: Fill me in! Want to allocate this only once
+        spec_array = np.zeros(shape=array_shape)
 
         for file_in_acq in range(self.n_spec_files):
             print( f"Building spec file {file_in_acq}. {self.config.daq.spec_length} s, {self.slices_in_spec} slices.")
             build_file_start = process_time()
-            for i, start_slice in enumerate( np.arange(0, self.slices_in_spec, self.slice_block)):
-                # Iterate by the slice_block until you hit the end of the spec file.
+            # Iterate by the slice_block until you hit the end of the spec file.
+            for start_slice in np.arange(0, self.slices_in_spec, self.slice_block):
                 stop_slice = min(start_slice + self.slice_block, self.slices_in_spec)
                 # This is the number of slices before averaging roach+avg slices together.
                 num_slices = (stop_slice - start_slice) * self.config.daq.roach_avg
 
-                noise_array = self.noise_array.copy()
-                self.config.dist_interface.rng.shuffle(noise_array)
-                noise_array = noise_array[: num_slices]
+                spec_array = self.get_noise_array()
+                spec_array += self.get_signal_array( file_in_acq, start_slice, stop_slice)
 
-                signal_array = self.build_signal_chunk( file_in_acq, start_slice, stop_slice)
-
-                requant_gain_scaling = 2**self.config.daq.requant_gain
-
-                spec_array = (
-                    signal_array
-                    * requant_gain_scaling
-                    # LNA gain of 67dB
-                    #TODO: make this a function of freq
-                    *5e6
-                    * self.gain_func(self.freq_axis)
-                    + noise_array
-                )
-
+                # LNA gain of 67dB
+                #TODO: make this a function of freq
+                spec.array *= self.gain_func(self.freq_axis) * self.requant_gain_scaling
                 spec_array = self.roach_slice_avg(spec_array)
+
+                # Computer Fourier power (magnitude_squared)
+                spec_array = np.abs(spec_array)**2
 
                 # Write chunk to spec file.
                 if self.config.daq.spec_suffix == "spec":
@@ -98,88 +85,43 @@ class DAQ:
             print( f"Time to build file {file_in_acq}: {build_file_stop- build_file_start:.3f} s \n")
 
         print("Done building {} files. ".format(self.config.daq.spec_suffix))
-        return None
 
-    def build_signal_chunk(self, file_in_acq, start_slice, stop_slice):
+    def get_signal_time_series(self, file_in_acq, start_slice, stop_slice):
+        """
+        Build a time-domain array of signal (Dimensions = N_FFT Bins x num_slices)
+        Later, this will be converted to the frequency domain S(f) via FFT, with the same dimensions
+        """
 
         print(f"file = {file_in_acq}, slices = [{start_slice}:{stop_slice}]")
-        ith_slice = np.arange(
-            start_slice * self.config.daq.roach_avg,
-            stop_slice * self.config.daq.roach_avg,
-        )
+        ith_slice = np.arange( start_slice * self.config.daq.roach_avg, stop_slice * self.config.daq.roach_avg)
         num_slices = (stop_slice - start_slice) * self.config.daq.roach_avg
 
         slice_start = ith_slice * self.delta_t
         slice_stop = (ith_slice + 1) * self.delta_t
 
-        # shape of t: (pts_per_fft, 1, num_slices). axis = 1 will be broadcast into the num_tracks.
+        ### XXX do just a straight number line, reshape at the end
+        # shape of t: (pts_per_fft, num_slices)
         t = np.linspace(slice_start, slice_stop, self.pts_per_fft)
-        t = np.expand_dims(t, axis=1)
 
-        # shape of track info arrays: (num_tracks, num_slices)
-        time_start = np.repeat(
-            np.expand_dims(self.tracks.time_start.to_numpy(), axis=1),
-            num_slices,
-            axis=1,
-        )
-        time_stop = np.repeat(
-            np.expand_dims(self.tracks.time_stop.to_numpy(), axis=1), num_slices, axis=1
-        )
-        band_power_start = np.repeat(
-            np.expand_dims(self.tracks.band_power_start.to_numpy(), axis=1),
-            num_slices,
-            axis=1,
-        )
-        band_power_stop = np.repeat(
-            np.expand_dims(self.tracks.band_power_stop.to_numpy(), axis=1),
-            num_slices,
-            axis=1,
-        )
-        freq_start = np.repeat(
-            np.expand_dims(self.tracks.freq_start.to_numpy(), axis=1),
-            num_slices,
-            axis=1,
-        )
-        slope = np.repeat(
-            np.expand_dims(self.tracks.slope.to_numpy(), axis=1), num_slices, axis=1
-        )
-        file_in_acq_array = np.repeat(
-            np.expand_dims(self.tracks.file_in_acq.to_numpy(), axis=1),
-            num_slices,
-            axis=1,
+        # TODO: It is on the previous blocks to make sure that the end times are calculated correctly so that the LPF is imposed...
+        # Maybe throw a warning?
+
+        # shape of signal_alive_condition: num_tracks
+        signal_alive_condition = (
+            (self.tracks["file_in_acq"] == file_in_acq)
+            & (self.tracks["time_start"] <= end_slice_XXX)
+            & (self.tracks["time_stop"] >= start_slice_XXX)
         )
 
-        # Reshape the random phase assigned to each band.
-        band_phase = np.repeat(
-            np.expand_dims(self.phase, axis=1),
-            num_slices,
-            axis=1,
-        )
+        eligible_tracks = self.tracks[signal_alive_condition]
 
-        # shape of slice_start/stop: (1, num_slices)
-        slice_start = np.expand_dims(slice_start, axis=0)
-        slice_stop = np.expand_dims(slice_stop, axis=0)
+        # Define a random phase for each band
+        # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from initial particle position
+        # in cyclotron motion. Inter-band phases are correlated depending on z0.
+        #phi_0 = np.random(0,2*PI, size = XXX)
 
         # Note that you will get a division by zero warning if the time_stop and time_start are the same.
-        band_powers = band_power_start + (band_power_stop - band_power_start) / (
-            time_stop - time_start
-        ) * (slice_start - time_start)
-
-        # Caluculate max frequency within the signal in order to impose the LPF.
-        freq_curr = freq_start + slope * (slice_stop - time_start)
-
-        # shape of signal_alive_condition: (num_tracks, num_slices).
-        # This condition is what imposes the LPF at the top of the freq bandwidth.
-        signal_alive_condition = (
-            (file_in_acq_array == file_in_acq)
-            & (time_start <= slice_start)
-            & (time_stop >= slice_stop)
-            & (freq_curr <= self.config.daq.freq_bw)
-        )
-
-        # print(freq_curr[signal_alive_condition])
-        # Setting all "dead" tracks to zero power.
-        band_powers[~signal_alive_condition] = 0
+        band_powers = band_power_start + (band_power_stop - band_power_start) / ( time_stop - time_start) * (slice_start - time_start)
 
         # Calculate voltage of signal.
         voltage = np.sqrt(band_powers * self.antenna_z)
@@ -187,56 +129,53 @@ class DAQ:
         # The following condition selects only signals that are alive at some point during the time block.
         condition = band_powers.any(axis=1)
 
-        # shape of signal_time_series: (pts_per_fft, num_tracks_alive_in_block, num_slices).
-        # The below is the most time consuming operation and the array is very memory intensive.
-        # What is happening is that the time domain signals for all slices in this block for each alive signal are made simultaneously
-        # and then the signals are summed along axis =1 (track axis).
-        # The factor of 2 is needed because the instantaeous frequency is the derivative
-        # of the phase. The band_phase is a random phase assigned to each band.
-        signal_time_series = voltage[condition, :] * np.sin(
-            (
-                freq_start[condition, :]
-                + slope[condition, :] / 2 * (t - time_start[condition, :])
-            )
-            * (2 * np.pi * ((t - time_start[condition, :])))
-            + band_phase[condition, :]
-        )
+        # Sum all signals in bandwidth to get total (CRES) time-series, to be FFT'ed
+        # The factor of 2 is needed because the instantaneous frequency is the derivative of the phase
+        # The band_phase is a random phase assigned to each band.
 
-        # shape of signal_time_series: (pts_per_fft, num_slices).
-        signal_time_series = signal_time_series.sum(axis=1)
+        for track in eligible_tracks:
+            track_phase = 2 * PI * track["freq_start"] * (t-track["t_start"])
+            track_phase += 2 * PI * track["slope"] / 2 * (t - t_start)**2)
+            track_phase += phi_0
+
+            signal_time_series += voltage * np.sin( track_phase)
+
+        ### check that I don't need, to e.g. transpose, flip_ud, etc.
+        return signal_time_series.reshape((self.pts_per_fft, num_slices))
+
+    def get_signal_array(self):
+        """
+        Build a frequency-domain array of signal (Dimensions = N_FFT Bins x self.slice_block slices)
+        Given signal time-series s(t), convert to frequency domain S(f) via FFT
+        Returns frequency-domain (with phase)
+        """
+        signal_time_series = self.get_signal_array()
 
         # shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
-        fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
+        Y_fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
+        return Y_fft.T
 
-        signal_array = np.real(fft)**2
 
-        #can't average until we've added noise and gotten the powers. 
-
-        return signal_array.T
-
-    def build_noise_floor_array(self):
+    def get_noise_array(self):
         """
-        Build a noise floor array with self.slice_block slices.
-        Note that this only works for roach avg = 2 at this point.
+        Build a frequency-domain array of noise (Dimensions = N_FFT Bins x self.slice_block slices)
+        For additive white Gaussian noise n, N(f) = FFT(n) is also Gaussian distributed
+        For colored noise, multiply by appropriate frequency-dependent factor
+        Returns frequency-domain (with phase)
         """
 
         self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
-
         delta_f_12 = 2.4e9 / 2**13
+        # TODO, what is the correct scaling bro?
+        noise_scaling = self.delta_f / delta_f_12
+        #requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
 
-        noise_power_scaling = self.delta_f / delta_f_12
-        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
-        noise_scaling = noise_power_scaling * requant_gain_scaling
-
-        # Chisquared noise:
-        noise_array = self.config.dist_interface.rng.chisquare(
-            df=2, size=(self.slice_block * self.config.daq.roach_avg, self.config.daq.freq_bins)
-        )
-        noise_array *= self.noise_mean_func(self.freq_axis) / noise_array.mean(axis=0)
-
+        array_size = self.slice_block * self.config.daq.roach_avg, self.config.daq.freq_bins
+        # TODO do I need imaginary component? (probably)
+        noise_array = self.config.dist_interface.rng.normal(size=array_size)
+        noise_array *= self.noise_mean_func(self.freq_axis)
         # Scale by noise power.
         noise_array *= noise_scaling
-        noise_array = np.around(noise_array).astype("uint8")
 
         return noise_array
 
