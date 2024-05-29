@@ -31,12 +31,17 @@ class BetaDecayDistribution(BaseDistribution):
         b (float): Value for the Fierz Inerference coefficient (little b).
     """
 
-    def __init__(self, isotope="He6", b=0):
+    def __init__(self, isotope="He6", b=0, E_min=0, E_max=1):
         # Include all possible isotopes here.
         self.allowed_isotopes = {
             "Ne19": {"W_max": 5.337377690802349, "Z": 9, "A": 19},
             "He6": {"W_max": 7.864593361688904, "Z": 2, "A": 6},
         }
+
+        self.isotope = isotope
+        self.b = b
+        self.E_min = E_min
+        self.E_max = E_max
 
     def set_parameters(self, yaml_block):
         # if present, assign from config file

@@ -28,10 +28,7 @@ class DAQ:
         self.slices_in_spec = int( config.daq.spec_length / self.delta_t / self.config.daq.roach_avg)
 
         # This block size is used to create chunks of spec file that don't overwhelm the ram.
-        self.slice_block = int(50 * 32768 / config.daq.freq_bins)
-
-        # Get date for building out spec file paths.
-        self.date = pd.to_datetime("today").strftime("%Y-%m-%d-%H-%M-%S")
+        self.slice_block = int(500 * 32768 / config.daq.freq_bins)
 
         # Grab the gain_noise csv. TODO: Document what this needs to look like.
         self.gain_noise = pd.read_csv(self.config.daq.gain_noise_csv_path)
@@ -40,6 +37,10 @@ class DAQ:
         # Need to add in U vs I side here.
         self.noise_mean_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.noise_mean)
         self.gain_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.gain)
+
+        # Fast estimation of zero-suppression thresholds
+        # We call it for both spec and speck, so that the rng is called the same for each, and dmtracks are the same
+        self.thresholds = self.set_thresholds()
 
     def run(self, downmixed_tracks_df):
         """
@@ -94,12 +95,13 @@ class DAQ:
         Later, this will be converted to the frequency domain S(f) via FFT, with the same dimensions
         """
         print(f"file = {file_in_acq}, slices = [{start_slice}:{stop_slice}]")
-        slice_start_time = start_slice * self.delta_t 
-        slice_stop_time = (stop_slice + 1) * self.delta_t 
+        slice_start_time = start_slice * self.delta_t
+        slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
 
         t = np.linspace(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices )
-        signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices )
+        dt = t[1] - t[0]
+        signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices)
         track_phase = np.zeros(shape=self.pts_per_fft * num_slices )
 
         # TODO: It is on the previous blocks to make sure that the end times are calculated correctly
@@ -117,14 +119,14 @@ class DAQ:
         # Sum all signals in bandwidth to get total (CRES) time-series, to be FFT'ed
         # The factor of 2 is needed because the instantaneous frequency is the derivative of the phase
         # The band_phase is a random phase assigned to each band.
+        time_to_index = lambda tTime: int( (tTime - t[0]) / dt)
 
         for track_index, track in eligible_tracks.iterrows():
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
             band_power = track["band_power_start"]
 
             # Slice object - selects the time indices in which the track is active
-            track_mask = slice(int(track["time_start"] / self.delta_t), int(track["time_stop"] / self.delta_t), 1)
-            voltage = np.sqrt(band_power * self.antenna_z)
+            track_mask = slice(max(time_to_index(track["time_start"]), 0), time_to_index(track["time_stop"]), 1)
 
             track_phase[track_mask] = 2 * PI * track["freq_start"] * (t[track_mask]-track["time_start"])
             track_phase[track_mask] += 2 * PI * track["slope"] / 2 * (t[track_mask]-track["time_start"])**2
@@ -135,11 +137,11 @@ class DAQ:
             track_phase[track_mask] += self.config.dist_interface.rng.uniform(0, 2*PI)
 
             # Should this be sin x or e^ix?
+            voltage = np.sqrt(band_power * self.antenna_z)
             signal_time_series[track_mask] += voltage * np.sin( track_phase[track_mask])
             track_phase[track_mask] = 0
 
-        ### check that I don't need, to e.g. transpose, flip_ud, etc.
-        return signal_time_series.reshape((self.pts_per_fft, num_slices))
+        return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
 
     def get_signal_array(self, file_in_acq, start_slice, stop_slice):
         """
@@ -251,6 +253,20 @@ class DAQ:
 
         return None
 
+    def set_thresholds(self):
+        # For zero-suppression, need to set zero-suppression thresholds based on noise
+        # Instead of generating 1s of noise for each frequency bin, use central limit theorem for mean
+        # power in each bin. Sum of N Chi-squared (k=4,2) depending on if summed or not
+
+        thresholds = self.gain_noise.noise_mean
+        # DOF = 2 when summing off (True), 4 when summing on (false)
+        kDOF = 2*( 2 - int(self.config.daq.roach_inverted_flag))
+        # CLT: sigma of sum = sigma(Chi-squared) / sqrt(N)
+        sigma_thresholds = np.sqrt(2. / (kDOF * self.slices_in_spec))
+        thresholds *= self.config.dist_interface.rng.normal(1, sigma_thresholds, size=self.config.daq.freq_bins)
+        thresholds *= self.config.daq.threshold_factor
+        return thresholds
+
     def add_high_power_point(self, frequency_bin):
         # We want to write (bin number, power) to zero-suppressed file
         # aIndex (0 - 4095) is a 12-bit number, does not fit in a byte.
@@ -268,7 +284,7 @@ class DAQ:
         """
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
-        # Append empty (zero) packet header to data 
+        # Append empty (zero) packet header to data
         header = np.zeros(32)
 
         # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
@@ -277,9 +293,6 @@ class DAQ:
         if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
                 raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
 
-        #thresholds = np.mean(self.noise_array, axis=0) * self.config.daq.threshold_factor
-        # TODO: What should I do to fix this?
-        thresholds = np.ones(shape = config.daq.freq_bins ) * self.config.daq.threshold_factor
         data = np.array([])
 
         # Pass "ab" to append to a binary file
@@ -287,7 +300,7 @@ class DAQ:
             for s in range(slices_in_spec):
                 data = np.append(data, header)
                 for j in range(freq_bins_in_spec):
-                    if int(spec_array[s][j]) > thresholds[j]:
+                    if int(spec_array[s][j]) > self.thresholds[j]:
                         data = np.append(data, self.add_high_power_point(j))
                         data = np.append(data, spec_array[s][j])
                 data = np.append(data, footer)
