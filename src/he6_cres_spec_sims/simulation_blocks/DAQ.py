@@ -61,16 +61,18 @@ class DAQ:
                 stop_slice = min(start_slice + self.slice_block, self.slices_in_spec)
 
                 num_slices = stop_slice - start_slice
+                requant_gain_scaling = 2**self.config.daq.requant_gain
 
-                spec_array = self.get_noise_array(num_slices)
-                spec_array += self.get_signal_array( file_in_acq, start_slice, stop_slice)
+                spec_array = self.get_signal_array( file_in_acq, start_slice, stop_slice)
+                # LNA gain of 67dB
+                #TODO: make this a function of freq. This should be improved (different sideband handling), etc.
+                spec_array *= np.sqrt(self.gain_func(self.freq_axis) * requant_gain_scaling * 5e6)
+
+                spec_array += self.get_noise_array(num_slices)
 
                 # Computer Fourier power (magnitude_squared)
                 spec_array = np.abs(spec_array)**2
 
-                # LNA gain of 67dB
-                #TODO: make this a function of freq
-                #spec_array *= self.gain_func(self.freq_axis) * self.requant_gain_scaling
                 spec_array = self.roach_slice_avg(spec_array)
 
                 # Write chunk to spec file.
@@ -132,6 +134,7 @@ class DAQ:
             # initial particle position. Different bands in the same event have correlated phases depending on z0
             track_phase[track_mask] += self.config.dist_interface.rng.uniform(0, 2*PI)
 
+            # Should this be sin x or e^ix?
             signal_time_series[track_mask] += voltage * np.sin( track_phase[track_mask])
             track_phase[track_mask] = 0
 
@@ -161,19 +164,21 @@ class DAQ:
 
         self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
         delta_f_12 = 2.4e9 / 2**13
-        # TODO, what is the correct scaling bro?
-        noise_scaling = self.delta_f / delta_f_12
-        #requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
+
+        noise_power_scaling = self.delta_f / delta_f_12
+        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
+        noise_scaling = noise_power_scaling * requant_gain_scaling
 
         array_size = (num_slices, self.config.daq.freq_bins)
 
         # Additive white Gaussian noise has FFT which is complex Gaussian
         # Real time-series only imply symmetry between positive/negative frequencies. FFT still complex
         # Imaginary first gets array typing to complex128, avoid recast
-        noise_array = 1j * self.config.dist_interface.rng.normal(scale=1./np.sqrt(2), size=array_size)
-        noise_array += self.config.dist_interface.rng.normal(scale = 1./np.sqrt(2), size=array_size)
+        noise_array = 1j * self.config.dist_interface.rng.normal(size=array_size)
+        noise_array += self.config.dist_interface.rng.normal(size=array_size)
 
-        noise_array *= self.noise_mean_func(self.freq_axis)
+        # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
+        noise_array *= np.sqrt(self.noise_mean_func(self.freq_axis) / 2.)
         # Scale by noise power.
         noise_array *= noise_scaling
 
