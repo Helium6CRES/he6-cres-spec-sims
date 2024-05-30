@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
-import json
 import sys
 import argparse
 from pathlib import Path
 import pytz
 import datetime
 
-# Local imports.
-# from . import experiment as exp
-# Path to local imports.
-# sys.path.append("/home/drew/He6CRES/he6-cres-spec-sims/")
-sys.path.append("/data/eliza4/he6_cres/simulation/he6-cres-spec-sims")
 import he6_cres_spec_sims.simulation as sim
 
+#sys.path.append("/data/eliza4/he6_cres/simulation/he6-cres-spec-sims")
 
 def main():
     """
@@ -34,7 +29,6 @@ def main():
 
     return None
 
-
 def run_simulation(sim_config_path):
 
     print(f"START. Current (PST) time: {get_pst_time()}")
@@ -48,11 +42,9 @@ def run_simulation(sim_config_path):
     
     return None
 
-# Utility.
 def get_pst_time():
     tz = pytz.timezone("US/Pacific")
-    pst_now = datetime.datetime.now(tz).replace(microsecond=0).replace(tzinfo=None)
-    return pst_now
+    return datetime.datetime.now(tz).replace(microsecond=0).replace(tzinfo=None)
 
 if __name__ == "__main__":
     main()

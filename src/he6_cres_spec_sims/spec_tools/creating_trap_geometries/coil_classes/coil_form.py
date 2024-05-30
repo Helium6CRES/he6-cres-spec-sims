@@ -66,7 +66,6 @@ class Coil_form:
         with phi in radians. Can choose field_coordinates 'Cartesian' or 'cylindrical'.
         """
         
-        mu0 = 4 * math.pi * 1e-7
         current_density = self._num_windings * self._current_per_wire
         
         #break down position vector
@@ -87,7 +86,7 @@ class Coil_form:
                     return value
        
             Br = 0
-            Bz = (mu0 / 2)* (current_density /(self._outer_radius - self._inner_radius))*(logterm(zpos,self._left_edge,self._outer_radius,self._inner_radius)-logterm(zpos,self._right_edge,self._outer_radius,self._inner_radius))
+            Bz = (MU_0 / 2)* (current_density /(self._outer_radius - self._inner_radius))*(logterm(zpos,self._left_edge,self._outer_radius,self._inner_radius)-logterm(zpos,self._right_edge,self._outer_radius,self._inner_radius))
             
         else:
             
@@ -160,11 +159,11 @@ class Coil_form:
                     return Bz_integrand(zpos,self._left_edge,self._right_edge,radius,self._inner_radius + k * (self._outer_radius - self._inner_radius)/(sheets-1),theta)
                     
                 if calculate_Br == True:
-                    Br = Br + (mu0 / (2*math.pi)) * current_per_sheet * romberg(Br_field_function,0,math.pi,divmax=20)
+                    Br = Br + (MU_0 / (2*PI)) * current_per_sheet * romberg(Br_field_function,0,PI,divmax=20)
                 else:
                     Br = 0
                 
-                Bz = Bz + (mu0 / (2*math.pi)) * current_per_sheet * romberg(Bz_field_function,0,math.pi,divmax=20)
+                Bz = Bz + (MU_0 / (2*PI)) * current_per_sheet * romberg(Bz_field_function,0,PI,divmax=20)
               
         if field_coordinates == "cylindrical":
             return (Br, 0 , Bz)

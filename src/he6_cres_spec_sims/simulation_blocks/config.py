@@ -1,11 +1,11 @@
+from pathlib import Path
 import yaml
-import pathlib
-import numpy as np
+
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
+from he6_cres_spec_sims.spec_tools.distributions.distribution_interface import DistributionInterface
 
 class DotDict(dict):
     """Provides dot.notation access to dictionary attributes."""
-
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
@@ -14,7 +14,6 @@ class DotDict(dict):
 class Config:
     """
     TODO: Add a default value for each of these. The dictionary gets overwritten.
-
 
     A class used to contain the field map and configurable parameters
     associated with a given simulation configuration file (for example:
@@ -60,7 +59,7 @@ class Config:
         """
 
         # Attributes:
-        self.config_path = pathlib.Path(config_path)
+        self.config_path = Path(config_path)
         self.load_field = load_field
         self.daq_only = daq_only
 
@@ -102,8 +101,8 @@ class Config:
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
 
-                print("RS: "+str(self.settings.rand_seed))
-                self.rng = np.random.default_rng(self.settings.rand_seed)
+                print("Seed: "+str(self.settings.rand_seed))
+                self.dist_interface = DistributionInterface(self.settings.rand_seed)
 
         except Exception as e:
             print("Config file failed to load.")
@@ -114,17 +113,7 @@ class Config:
         load_he6_trap module, and the main_field and trap strength
         specified in the config file to create an instance of
         Trap_profile.
-
-        Parameters
-        ----------
-        None
-
-        Raises
-        ------
-        Exception
-            If field profile fails to load.
         """
-
         try:
             main_field = self.eventbuilder.main_field
             trap_current = self.eventbuilder.trap_current

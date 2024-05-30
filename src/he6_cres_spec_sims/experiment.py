@@ -1,22 +1,17 @@
 from dataclasses import dataclass
+import json
 from natsort import natsorted
 import numpy as np
 import pandas as pd
-import pathlib
-from shutil import copyfile
-from shutil import rmtree
-import typing
+from pathlib import Path
+from shutil import copyfile, rmtree
 from typing import List
 import yaml
-from pathlib import Path
-import json
 
 import he6_cres_spec_sims.simulation as sim
-from he6_cres_spec_sims.simulation_blocks import Config
 
-# from .spec_tools import beta_source as source
-import he6_cres_spec_sims.spec_tools.beta_source.beta_source as source
-import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+import he6_cres_spec_sims.simulation_blocks as sim_blocks
+import he6_cres_spec_sims.simulation_blocks.config
 
 #this function runs everything, previously in run_local_experiment.py script, 
 # putting it here allows you to more easily run experiments interactively
@@ -39,18 +34,15 @@ def run_local_experiment(dict_path):
     return None
 
 # Utility function:
-def get_experiment_dir(experiment_params: dict) -> pathlib.Path:
-
-    base_config_path = pathlib.Path(experiment_params["base_config_path"])
+def get_experiment_dir(experiment_params: dict) -> Path:
+    base_config_path = Path(experiment_params["base_config_path"])
     experiment_name = experiment_params["experiment_name"]
     parent_dir = base_config_path.parents[0]
     experiment_dir = parent_dir / experiment_name
-
     return experiment_dir
 
-
 # Utility function:
-def get_config_paths(experiment_params: dict) -> List[pathlib.Path]:
+def get_config_paths(experiment_params: dict) -> List[Path]:
 
     experiment_dir = get_experiment_dir(experiment_params)
 
@@ -102,7 +94,7 @@ class Experiment:
 
     def create_configs_for_experiment(self, experiment_params: dict) -> None:
 
-        base_config_path = pathlib.Path(experiment_params["base_config_path"])
+        base_config_path = Path(experiment_params["base_config_path"])
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Make the experiments_dir if it doesn't exist. May want to delete contents here?
@@ -141,7 +133,7 @@ class Experiment:
             with open(config_path, "r") as f:
                 config_dict = yaml.load(f, Loader=yaml.FullLoader)
 
-            # Make the appropriate altercations to the config_dict
+            # Make the appropriate alterations to the config_dict
             # For seed = None, rng pulls from hardware entropy
             if seed is not None:
                 config_dict["Settings"]["rand_seed"] = int(seed)
@@ -149,7 +141,7 @@ class Experiment:
                 config_dict["Settings"]["rand_seed"] = None
             config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
             config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
-            config_dict["Physics"]["energy_spectrum"]["beta_source"] = str(isotope)
+            #config_dict["Physics"]["energy"]["isotope"] = str(isotope)
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
 
@@ -172,7 +164,7 @@ class Experiment:
 
         return None
 
-    def run_sims(self, config_paths: List[pathlib.Path]) -> None:
+    def run_sims(self, config_paths: List[Path]) -> None:
 
         for i, config_path in enumerate(config_paths):
             print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
@@ -189,15 +181,14 @@ class ExpResults:
 
     experiment_params: dict
     # base_config: object
-    config_paths: List[pathlib.Path]
-    sampled_gammas: pd.DataFrame
+    config_paths: List[Path]
     tracks: pd.DataFrame
 
     @classmethod
-    def load(cls, experiment_config_path: str = None, include_sampled_gammas=False):
+    def load(cls, experiment_config_path: str = None):
 
         # Path to the exp_config.yaml file.
-        experiment_config_path = pathlib.Path(experiment_config_path)
+        experiment_config_path = Path(experiment_config_path)
 
         # Open the config file and grab the contents.
         with open(experiment_config_path, "r") as f:
@@ -211,7 +202,6 @@ class ExpResults:
             "experiment_params": experiment_params,
             # "base_config": Config(experiment_params["base_config_path"]),
             "config_paths": None,
-            "sampled_gammas": None,
             "tracks": None,
         }
 
@@ -222,7 +212,6 @@ class ExpResults:
         exp_results_dict["config_paths"] = config_paths
 
         tracks_list = []
-        sampled_gammas = []
         fields = []
 
         # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
@@ -236,7 +225,7 @@ class ExpResults:
             print("+++++++++++++++++++++++++++++++++++++++++++++++++")
 
             # Get the simulation parameters from the config.
-            config = Config(config_path)
+            config = sim_blocks.config.Config(config_path)
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
             print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
@@ -247,33 +236,19 @@ class ExpResults:
             tracks["trap_current"] = trap_current
             tracks_list.append(tracks)
 
-            if include_sampled_gammas:
-                # Get the betas that were sampled during the simulation.
-                beta_source_ne19 = source.BetaSource(config)
-                sampled_energies = beta_source_ne19.energy_array[: int(beta_num)]
-                sampled_gammas.append(sc.gamma(sampled_energies))
-                fields.append(field)
-
-        if include_sampled_gammas:
-            exp_results_dict["sampled_gammas"] = pd.DataFrame.from_dict(
-                dict(zip(fields, sampled_gammas))
-            )
         exp_results_dict["tracks"] = pd.concat(tracks_list)
 
         exp_results = cls(
             exp_results_dict["experiment_params"],
             # exp_results_dict["base_config"],
             exp_results_dict["config_paths"],
-            exp_results_dict["sampled_gammas"],
             exp_results_dict["tracks"],
         )
 
         return exp_results
 
 
-def get_config_paths_results(
-    experiment_config_path: pathlib.Path,
-) -> List[pathlib.Path]:
+def get_config_paths_results(experiment_config_path: Path) -> List[Path]:
 
     experiment_dir = experiment_config_path.parents[0]
     print(experiment_dir)

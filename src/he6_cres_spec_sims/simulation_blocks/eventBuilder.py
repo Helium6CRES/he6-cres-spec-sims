@@ -1,13 +1,13 @@
 import numpy as np
-from .physics import *
 import pandas as pd
+
+from .physics import *
 from he6_cres_spec_sims.constants import *
 
 class EventBuilder:
     """  Constructs a list of betas which are trapped within the detector volume
          (Doesn't hit waveguide walls && pitch angle is magnetically trapped)
     """
-
     def __init__(self, config):
 
         self.config = config
@@ -35,45 +35,26 @@ class EventBuilder:
             if betas_to_simulate == -1:
                 betas_to_simulate = np.inf
 
-        print(
-            f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}"
-        )
+        print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
         while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
-
-            # print("\nEvent: {}/{}...\n".format(event_num, events_to_simulate - 1))
-
             # generate trapped beta
             is_trapped = False
 
             while not is_trapped and beta_num < betas_to_simulate:
-
                 if beta_num % 250 == 0:
-                    print(
-                        f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas."
-                    )
-                    print(
-                        f"\nEvents: {event_num}/{events_to_simulate-1} trapped events."
-                    )
+                    print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
+                    print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
 
-                # Does this miss some betas??? Be sure it doesn't.
+                initial_position, initial_direction  = self.physics.generate_beta_position_direction()
+                energy = self.physics.generate_beta_energy()
                 beta_num += 1
 
-                (
-                    initial_position,
-                    initial_direction,
-                ) = self.physics.generate_beta_position_direction()
-
-                energy = self.physics.generate_beta_energy(beta_num)
-
-                single_segment_df = self.construct_untrapped_segment_df(
-                    initial_position, initial_direction, energy, event_num, beta_num
-                )
+                single_segment_df = self.construct_untrapped_segment_df(initial_position, initial_direction, energy, event_num, beta_num)
 
                 is_trapped = self.trap_condition(single_segment_df)
 
             if event_num == 0:
-
                 trapped_event_df = single_segment_df
 
             elif beta_num == betas_to_simulate:
@@ -85,10 +66,9 @@ class EventBuilder:
             event_num += 1
         return trapped_event_df
 
-    def construct_untrapped_segment_df(
-        self, beta_position, beta_direction, beta_energy, event_num, beta_num
-    ):
-        """TODO:Document"""
+    def construct_untrapped_segment_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
+        """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
+        """
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]
@@ -109,21 +89,12 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
-        center_theta = sc.theta_center(
-            initial_zpos, rho_center, initial_theta, self.config.trap_profile
-        )
+        center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
 
         # Use trapped_initial_theta to determine if trapped.
-        trapped_initial_theta = sc.min_theta(
-            rho_center, initial_zpos, self.config.trap_profile
-        )
-        max_radius = sc.max_radius(
-            beta_energy, center_theta, rho_center, self.config.trap_profile
-        )
-
-        min_radius = sc.min_radius(
-            beta_energy, center_theta, rho_center, self.config.trap_profile
-        )
+        trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
+        max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
+        min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
 
         segment_properties = {
             "energy": beta_energy,
@@ -160,11 +131,11 @@ class EventBuilder:
             "segment_num": 0,
             "event_num": event_num,
             "beta_num": beta_num,
-            "fraction_of_spectrum": self.physics.bs.fraction_of_spectrum,
-            "energy_accept_high": self.physics.bs.energy_acceptance_high,
-            "energy_accept_low": self.physics.bs.energy_acceptance_low,
-            "gamma_accept_high": sc.gamma(self.physics.bs.energy_acceptance_high),
-            "gamma_accept_low": sc.gamma(self.physics.bs.energy_acceptance_low),
+            "fraction_of_spectrum": self.physics.fraction_of_spectrum,
+            "energy_accept_high": self.physics.energy_acceptance_high,
+            "energy_accept_low": self.physics.energy_acceptance_low,
+            "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
+            "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
         }
 
         segment_df = pd.DataFrame(segment_properties, index=[event_num])
@@ -172,7 +143,8 @@ class EventBuilder:
         return segment_df
 
     def trap_condition(self, segment_df):
-        """TODO:Document"""
+        """ Returns whether beta (described by segment_df column row) is trapped or not
+        """
         segment_df = segment_df.reset_index(drop=True)
 
         if segment_df.shape[0] != 1:
