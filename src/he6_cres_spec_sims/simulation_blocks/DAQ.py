@@ -47,6 +47,12 @@ class DAQ:
         This function is responsible for building out the spec files and calling the below methods.
         """
         self.tracks = downmixed_tracks_df
+        # Define a random phase for each band. Need to be associated per track (lasting multiple chunks)
+        # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
+        # initial particle position. Different bands in the same event have correlated phases depending on z0
+        # Should be done earlier, probably
+        self.tracks["phi_0"] = self.config.dist_interface.rng.uniform(0,2 * PI, size=len(self.tracks))
+
         self.create_results_dir()
         self.n_spec_files = downmixed_tracks_df.file_in_acq.nunique()
         self.spec_file_paths = self.build_file_paths(self.n_spec_files, self.spec_files_dir, "spec")
@@ -131,10 +137,7 @@ class DAQ:
             track_phase[track_mask] = 2 * PI * track["freq_start"] * (t[track_mask]-track["time_start"])
             track_phase[track_mask] += 2 * PI * track["slope"] / 2 * (t[track_mask]-track["time_start"])**2
 
-            # Define a random phase for each band
-            # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
-            # initial particle position. Different bands in the same event have correlated phases depending on z0
-            track_phase[track_mask] += self.config.dist_interface.rng.uniform(0, 2*PI)
+            track_phase[track_mask] += track["phi_0"]
 
             # Should this be sin x or e^ix?
             voltage = np.sqrt(band_power * self.antenna_z)
