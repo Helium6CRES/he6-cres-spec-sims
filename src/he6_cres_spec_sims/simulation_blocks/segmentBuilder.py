@@ -19,7 +19,10 @@ class SegmentBuilder:
         # distribution of scattering angles [degrees]
         self.scattering_angle_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.scattering_angle)
 
-    def run(self, trapped_event_df):
+        # distribution of start times [s]
+        self.start_time_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.start_time)
+
+    def run_old(self, trapped_event_df):
         """TODO: DOCUMENT"""
         print("~~~~~~~~~~~~SegmentBuilder Block~~~~~~~~~~~~~~\n")
         # Empty list to be filled with scattered segments.
@@ -46,7 +49,7 @@ class SegmentBuilder:
             # Extract necessary parameters from event.
             # TODO: Note that it is slightly incorrect to assume the power doesn't change as time passes.
             energy = event["energy"]
-            energy_stop = event["energy_stop"]
+            #energy_stop = event["energy_stop"]
             event_num = event["event_num"]
             beta_num = event["beta_num"]
 
@@ -97,6 +100,136 @@ class SegmentBuilder:
 
         return scattered_df
     
+    def run(self, trapped_event_df):
+        """
+        Builds scattered tracks for each event. Each track is composed of many segments that describe the shape 
+        (freq vs time)
+        """
+        print("~~~~~~~~~~~~SegmentBuilder Block~~~~~~~~~~~~~~\n")
+        # Empty list to be filled with segments.
+        tracks_list = []
+        segments = []
+        #create segments for every event
+        for event_index, event in trapped_event_df.iterrows():
+            if event_index % 25 == 0:
+                print("\nBuilding Event :", event_index)
+
+            # Assign segment 0 of event with a segment_length.
+            scatter_time = self.segment_length_distribution.generate()
+
+            # Fill the event with computationally intensive properties.
+            event = self.fill_in_properties(event)
+
+            event["time_start"] = self.start_time_distribution.generate()
+
+            # Begin with trapped beta (segment 0 of event).
+            tracks = [event]
+            is_trapped = True
+            jump_num = 0
+            max_freq = self.config.physics.freq_acceptance_high
+
+            end_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
+            end_time = (end_time, scatter_time) [scatter_time>end_time]
+            
+
+            while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
+                print(f"Jump number: {jump_num}")
+                track_segments = []
+                t, freq, field = tracks[-1]["time_start"], tracks[-1]["avg_cycl_freq"], tracks[-1]["b_avg"]
+                segment_radiated_power_tot = sc.power_larmor(field, freq)
+                while t< end_time and freq < max_freq:
+                    segment = self.create_segment(t, freq, segment_radiated_power_tot, end_time, max_freq, event_index,
+                                                   jump_num, field)
+                    t, freq = segment.end_time, segment.end_freq
+                    track_segments.append(segment)
+
+                tracks[-1]["freq_stop"] = freq
+                tracks[-1]["time_stop"] = t
+                tracks[-1]["energy_stop"] = sc.freq_to_energy(freq, tracks[-1]["b_avg"])
+                tracks[-1]["track_num"] = jump_num
+
+                segments.append(track_segments)
+                tracks_list.append(tracks[-1].values.tolist())
+
+                new_track = self.scatter(tracks[-1])
+
+                if self.eventbuilder.trap_condition(new_track) == True:
+                    #TODO there is almost certainly a better way to pass/grab the new track info
+                    new_track = next(self.fill_in_properties(new_track).iterrows())[1]
+                    new_track["time_start"] = t
+                    tracks.append(new_track)
+                    jump_num += 1
+                else: 
+                    is_trapped=False
+
+                
+
+        scattered_df = pd.DataFrame(tracks_list, columns=trapped_event_df.columns)
+
+        return scattered_df, segments
+    
+    def scatter(self, event):
+        """Creates Scattered track from initial event conditions.
+        """
+
+        center_x, center_y = event["center_x"], event["center_y"]
+        rho_pos = event["initial_rho_pos"]
+        phi_pos = event["initial_phi_pos"]
+        zpos = 0
+        center_theta = event["center_theta"]
+        phi_dir = event["initial_phi_dir"]
+        energy_stop = event["energy_stop"]
+        event_num = event["event_num"]
+        beta_num = event["beta_num"]
+
+        # Jump Size
+        jump_size_eV = self.jump_distribution.generate()
+
+        # Delta Pitch Angle: Sampled from normal dist.
+        scattering_angle = self.scattering_angle_distribution.generate()
+
+        # Original beta direction vector in cartesian coordinates
+        theta_dir = center_theta # tmp see TODO below
+        v_vec_old = np.array([np.sin(theta_dir/RAD_TO_DEG) *np.cos(phi_dir/RAD_TO_DEG),
+                    np.sin(theta_dir/RAD_TO_DEG)*np.sin(phi_dir/RAD_TO_DEG), np.cos(theta_dir/RAD_TO_DEG)])
+
+        # This always produces a vector lying on cone with angle = scattering_angle with respect to initial velocity vector
+        tmp_theta = theta_dir + scattering_angle
+        tmp_v_vec = np.array([np.sin(tmp_theta/RAD_TO_DEG) *np.cos(phi_dir/RAD_TO_DEG),
+                    np.sin(tmp_theta/RAD_TO_DEG)*np.sin(phi_dir/RAD_TO_DEG), np.cos(tmp_theta/RAD_TO_DEG)])
+
+        # Using Rodrigues' Rotation Formula (rotate tmp_velocity_vec around velocity_vec_old)
+        # Depending on dPhi, get random vector along that cone
+        dPhi = 2*PI*self.config.dist_interface.rng.uniform()
+        vNew = tmp_v_vec * np.cos(dPhi) + np.cross(v_vec_old,tmp_v_vec) * np.sin(dPhi) + v_vec_old * np.dot(v_vec_old,tmp_v_vec) * (1-np.cos(dPhi))
+        vNew /= np.sqrt(np.dot(vNew, vNew)) # Probably unnecessary, don't want this to drift too much from floating point errors
+
+        # Second, calculate new pitch angle and energy.
+        theta_new = np.arccos( vNew[2] ) * RAD_TO_DEG
+        phi_dir = np.arctan2(vNew[1],vNew[0]) * RAD_TO_DEG
+
+        # TODO: We should 1) randomly choose z's to scatter at (PDF proportional to v_z^-1, which means saving z-motion, inverse transform sampling)
+        # Then 2, convert local scattered pitch angle to the new center_theta
+        # Since we scatter only at z=0, don't bother propagating scattering change in instantaneous theta_dir to center_theta
+        center_theta = theta_new
+
+        # Ensure that pitch angle is defined to be smaller than 90.
+        if center_theta > 90:
+            center_theta = 180 - center_theta
+
+        # New energy:
+        energy = energy_stop - jump_size_eV
+
+        # New position and direction. Only center_theta is changing right now.
+        beta_position, beta_direction = (
+            [rho_pos, phi_pos, zpos],
+            [center_theta, phi_dir],
+        )
+
+        # Third, construct a scattered, meaning potentially not-trapped, segment df
+        return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num, beta_num)
+
+
     def scatter_segment(self, center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num):
         """Creates Scattered segment from initial event conditions.
         TODO find more elegant solution to dealing with center_theta, I don't like that its being passed around so much.
@@ -206,3 +339,51 @@ class SegmentBuilder:
         df["segment_power"] = segment_power
 
         return df
+    
+    def create_segment(self, time, freq, power, max_time, max_freq, event, track, b_avg):
+        '''
+        This function creates a track object for a given time and frequency. Currently only check that we are within
+        segment length.
+        TODO add more track options
+        '''
+
+        # set different ranges of frequencies where different things can happen, the largest range is normal linear
+        # segments, but there can be cutoff regions, field slewing regions, etc where shape and slope changes
+        # TODO add option to apply different effects
+        linear_range = [self.config.physics.freq_acceptance_low, self.config.physics.freq_acceptance_high]
+        print(freq)
+        if linear_range[0] <= freq < linear_range[1]:
+            segment = LinearSegment(time, freq, power, event, track, max_time, max_freq, b_avg)
+
+        return segment
+
+class Segment:
+    '''
+    A class for different types of track segments, the most common being a linear segment. All tracks have a start
+    and end frequency and time and power, but  have different shapes and integrals.
+    '''
+
+    def __init__(self, start_time, start_freq, start_power, event, track):
+        self.start_freq = start_freq
+        self.start_time = start_time
+        self.start_power = start_power
+        self.event = event
+        self.track = track
+
+    
+class LinearSegment(Segment):
+     def __init__(self, start_time, start_freq, start_power, event, track, max_time, max_freq, field):
+        super().__init__(start_time, start_freq, start_power, event, track)
+        self.track_type = "Linear"
+
+        start_energy = sc.freq_to_energy(start_freq, field)
+        self.slope = sc.df_dt( start_energy, field, start_power)
+
+        if self.slope*max_time < max_freq:
+            self.end_freq = self.slope*max_time + start_freq
+            self.end_time = max_time
+        else:
+            self.end_freq = max_freq
+            self.end_time = (max_freq-start_freq)/self.slope
+
+        # print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")

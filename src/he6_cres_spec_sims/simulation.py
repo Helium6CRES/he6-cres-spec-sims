@@ -42,18 +42,18 @@ class Simulation:
         eventbuilder = sim_blocks.eventBuilder.EventBuilder(self.config)
         segmentbuilder = sim_blocks.segmentBuilder.SegmentBuilder(self.config)
         bandbuilder = sim_blocks.bandBuilder.BandBuilder(self.config)
-        trackbuilder = sim_blocks.trackBuilder.TrackBuilder(self.config)
+        # trackbuilder = sim_blocks.trackBuilder.TrackBuilder(self.config)
         dmtrackbuilder = sim_blocks.dmTrackBuilder.DMTrackBuilder(self.config)
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
         events = eventbuilder.run()
-        segments = segmentbuilder.run(events)
-        bands = bandbuilder.run(segments)
-        tracks = trackbuilder.run(bands)
+        tracks, segments = segmentbuilder.run(events)
+        # bands = bandbuilder.run(segments)
+        # tracks = trackbuilder.run(bands)
         dmtracks = dmtrackbuilder.run(tracks)
-        if self.config.settings.sim_daq:
-            spec_array = daq.run(dmtracks)
+        # if self.config.settings.sim_daq:
+        #     spec_array = daq.run(dmtracks)
 
         # Save the results of the simulation:
         # For now only write dmtracks to keep things lightweight.
