@@ -121,6 +121,7 @@ class SegmentBuilder:
             event = self.fill_in_properties(event)
 
             event["time_start"] = self.start_time_distribution.generate()
+            event["freq_start"] = event["avg_cycl_freq"]
 
             # Begin with trapped beta (segment 0 of event).
             tracks = [event]
@@ -128,16 +129,18 @@ class SegmentBuilder:
             jump_num = 0
             max_freq = self.config.physics.freq_acceptance_high
 
-            end_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
-            end_time = (end_time, scatter_time) [scatter_time>end_time]
+            #TODO maybe this should be a different varibale in the config... or maybe just renamed
+            trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
+            end_time = (trap_on_time, scatter_time) [scatter_time>trap_on_time]
+            print(end_time)
             
 
             while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
                 print(f"Jump number: {jump_num}")
                 track_segments = []
-                t, freq, field = tracks[-1]["time_start"], tracks[-1]["avg_cycl_freq"], tracks[-1]["b_avg"]
+                t, freq, field = tracks[-1]["time_start"], tracks[-1]["freq_start"], tracks[-1]["b_avg"]
                 segment_radiated_power_tot = sc.power_larmor(field, freq)
-                while t< end_time and freq < max_freq:
+                while (t < end_time) and (freq < max_freq):
                     segment = self.create_segment(t, freq, segment_radiated_power_tot, end_time, max_freq, event_index,
                                                    jump_num, field)
                     t, freq = segment.end_time, segment.end_freq
@@ -146,10 +149,14 @@ class SegmentBuilder:
                 tracks[-1]["freq_stop"] = freq
                 tracks[-1]["time_stop"] = t
                 tracks[-1]["energy_stop"] = sc.freq_to_energy(freq, tracks[-1]["b_avg"])
-                tracks[-1]["track_num"] = jump_num
+                #TODO update all segment numbers to track numbers
+                tracks[-1]["segment_num"] = jump_num
 
                 segments.append(track_segments)
                 tracks_list.append(tracks[-1].values.tolist())
+
+                # break out of loop if this track reached end of trap on time
+                if t >= trap_on_time: break 
 
                 new_track = self.scatter(tracks[-1])
 
@@ -157,14 +164,15 @@ class SegmentBuilder:
                     #TODO there is almost certainly a better way to pass/grab the new track info
                     new_track = next(self.fill_in_properties(new_track).iterrows())[1]
                     new_track["time_start"] = t
+                    new_track["freq_start"] = freq
                     tracks.append(new_track)
                     jump_num += 1
                 else: 
                     is_trapped=False
-
-                
-
-        scattered_df = pd.DataFrame(tracks_list, columns=trapped_event_df.columns)
+        print(tracks_list[-1])
+        # TODO there may be a more elegant way to update the columns... but this works for now       
+        columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
+        scattered_df = pd.DataFrame(tracks_list, columns=columns)
 
         return scattered_df, segments
     
@@ -349,9 +357,13 @@ class SegmentBuilder:
 
         # set different ranges of frequencies where different things can happen, the largest range is normal linear
         # segments, but there can be cutoff regions, field slewing regions, etc where shape and slope changes
-        # TODO add option to apply different effects
-        linear_range = [self.config.physics.freq_acceptance_low, self.config.physics.freq_acceptance_high]
+        
+        # TODO currently code is creating events outside of physics frequency range... this buffer is a bandaid on
+        # this problem which I believe is from the physics part of the code, bandaiding so I can continue debugging
+        # this code...
+        linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
         print(freq)
+        
         if linear_range[0] <= freq < linear_range[1]:
             segment = LinearSegment(time, freq, power, event, track, max_time, max_freq, b_avg)
 
@@ -386,4 +398,4 @@ class LinearSegment(Segment):
             self.end_freq = max_freq
             self.end_time = (max_freq-start_freq)/self.slope
 
-        # print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")
+        print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")
