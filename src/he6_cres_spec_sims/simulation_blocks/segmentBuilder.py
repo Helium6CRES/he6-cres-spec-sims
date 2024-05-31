@@ -21,6 +21,9 @@ class SegmentBuilder:
 
         # distribution of start times [s]
         self.start_time_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.start_time)
+
+        self.verbosity = self.config.segmentbuilder.verbose
+        print(self.config.segmentbuilder.verbose)
     
     def run(self, trapped_event_df):
         """
@@ -54,11 +57,9 @@ class SegmentBuilder:
             #TODO maybe this should be a different varibale in the config... or maybe just renamed
             trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
             end_time = (trap_on_time, scatter_time) [scatter_time>trap_on_time]
-            print(end_time)
             
-
             while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
-                print(f"Jump number: {jump_num}")
+                if self.verbosity == True: print(f"Event {event_index}, Jump {jump_num}")
                 track_segments = []
                 t, freq, field = tracks[-1]["time_start"], tracks[-1]["freq_start"], tracks[-1]["b_avg"]
                 segment_radiated_power_tot = sc.power_larmor(field, freq)
@@ -91,7 +92,7 @@ class SegmentBuilder:
                     jump_num += 1
                 else: 
                     is_trapped=False
-        print(tracks_list[-1])
+
         # TODO there may be a more elegant way to update the columns... but this works for now       
         columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
         scattered_df = pd.DataFrame(tracks_list, columns=columns)
@@ -232,7 +233,6 @@ class SegmentBuilder:
         # this problem which I believe is from the physics part of the code, bandaiding so I can continue debugging
         # this code...
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
-        print(freq)
         
         if linear_range[0] <= freq < linear_range[1]:
             segment = LinearSegment(time, freq, power, event, track, max_time, max_freq, b_avg)
@@ -268,4 +268,4 @@ class LinearSegment(Segment):
             self.end_freq = max_freq
             self.end_time = (max_freq-start_freq)/self.slope
 
-        print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")
+        #print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")
