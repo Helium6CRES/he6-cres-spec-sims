@@ -1,11 +1,11 @@
 """spec_calc
 
-This set of calculators takes cres electron properties (such as energy, pitch angle), as 
-well as information about the trap (instance of a trap_profile object) and outputs other 
+This set of calculators takes cres electron properties (such as energy, pitch angle), as
+well as information about the trap (instance of a trap_profile object) and outputs other
 cres electron properties such as axial frequency, z_max, B_avg.
 
 ---
-Units for all module functions' inputs/outputs: 
+Units for all module functions' inputs/outputs:
 
 Energy   : eV
 B-field  : T
@@ -14,12 +14,8 @@ Angle    : degrees
 Distance : m
 Frequency: Hz
 Power    : W
-
-
 ---
 """
-import math
-import os
 import numpy as np
 
 import scipy.integrate as integrate
@@ -111,10 +107,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
         Bmin = trap_profile.field_strength(rho, 0.0)
         Bcurr = trap_profile.field_strength(rho, zpos)
 
-        theta_center_calc = (
-            np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG))
-            * RAD_TO_DEG
-        )
+        theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
 
         return theta_center_calc
 
@@ -199,9 +192,7 @@ def min_theta(rho, zpos, trap_profile):
     """Calculates the minimum pitch angle theta at which an electron at
     zpos is trapped given trap_profile.
     """
-
     if trap_profile.is_trap:
-
         # Be careful here. Technically the Bmax doesn't occur at a constant z.
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
@@ -214,47 +205,19 @@ def min_theta(rho, zpos, trap_profile):
         return False
 
 
-@np.vectorize
 def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
-
     """Calculates the maximum axial length from center of trap as a
     function of center_pitch_angle and rho.
     """
-
     if trap_profile.is_trap:
+        # Ok, so does this mean we now have an energy dependence on zmax? Yes.
+        c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+        rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
-        if center_pitch_angle < min_theta(rho, 0, trap_profile):
-            print("WARNING: Electron not trapped (zpos)")
-            return False
+        Bmin = trap_profile.field_strength(rho_p, 0)
+        Bmax = Bmin / pow( np.sin(center_pitch_angle / RAD_TO_DEG), 2)
 
-        else:
-            # Ok, so does this mean we now have an energy dependence on zmax? Yes.
-            c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
-            rho_p = np.sqrt(rho**2 + c_r**2 / 2)
-
-            min_field = trap_profile.field_strength(rho_p, 0)
-            max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
-
-            max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
-
-            func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
-
-            # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
-            solution = root_scalar(func, bracket=[0, trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
-            max_z = solution.root
-            curr_field = trap_profile.field_strength(rho_p, max_z)
-
-            if (curr_field > max_reached_field) and debug == True:
-                print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
-                print("Bmax reached: ", curr_field)
-
-            if debug == True:
-                print("zlength: ", max_z)
-
-            if max_z > trap_profile.trap_width[1]:
-                print("Error Rate: ", max_z - trap_profile.trap_width[1])
-
-            return max_z
+        return trap_profile.field_strength_inverse_map(rho_p, Bmax)
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
@@ -313,31 +276,32 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         return False
 
 
-@np.vectorize
-def axial_freq(energy, center_pitch_angle, rho, trap_profile):
-
-    """Caculates the axial frequency of a trapped electron."""
-
+def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=100):
+    """Calculates the axial frequency of trapped electrons."""
     if trap_profile.is_trap:
-        # center_pitch_angle = np.where(center_pitch_angle == 90.0, 89.999, center_pitch_angle)
-        if center_pitch_angle == 90.0:
-            center_pitch_angle = 89.999
+        # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
+        # Sets allowed range, "clipping" the pitches at 90 deg.
+        center_pitch_angle = np.clip(center_pitch_angle, 0, 89.9999)
 
-        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-
-        c_r = cyc_radius(
-            energy, trap_profile.field_strength(rho, 0), center_pitch_angle
-        )
+        # Get cyclotron-radius modified "effective" guiding center rho
+        c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
-        B = lambda z: trap_profile.field_strength(rho_p, z)
-        Bmax = trap_profile.field_strength(rho_p, zmax)
+        # Field at center of trap
+        B0 = trap_profile.field_strength(rho_p, 0)
+        # Field at turning point
+        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        # Field in between (vs. instantaneous pitch angle)
+        B = lambda theta: Bmax * np.sin(theta / RAD_TO_DEG)**2
 
-        # Secant of theta as function of z. Use conserved mu to derive.
-        sec_theta = lambda z: (1 - B(z) / Bmax) ** (-0.5)
-        T_a = 4 / velocity(energy) * integrate.quad(sec_theta, 0, zmax)[0]
+        #Use conserved mu to derive
+        thetas = np.linspace(center_theta, 90, nIntegralPoints)
+        dTheta = thetas[1] - thetas[0]
+        integrand = np.sin(thetas) / Bprime(B(thetas))
 
-        axial_frequency = 1 / T_a
+        T_a = 8. * Bmax / velocity(energy) * np.trapz(integrand, dx=dTheta)
+
+        axial_frequency = 1. / T_a
 
         return axial_frequency
 
@@ -346,54 +310,43 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile):
         return False
 
 def avg_cycl_freq(energy, center_pitch_angle, rho, trap_profile):
-
     field = b_avg(energy, center_pitch_angle, rho, trap_profile)
-
     return energy_to_freq(energy, field)
 
+def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=100):
 
-@np.vectorize
-def b_avg(energy, center_pitch_angle, rho, trap_profile):
-
-    """Calculates the average magnetic field experienced by an electron
-    of a given kinetic energy, main field, and center pitch angle.
-    Returns 0 if electron is not trapped.
+    """Calculates the average magnetic field experienced by an array of electrons
+    with given kinetic energies, main fields, and center pitch angles.
+    Returns 0 if not trapped.
     """
-
-    c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
-
-    rho_p = np.sqrt(rho**2 + c_r**2 / 2)
-    rho_pp = np.sqrt(rho**2 + c_r**2)
-
     if trap_profile.is_trap:
 
-        Bmin = trap_profile.field_strength(rho_p, 0)
-        min_trapped_angle = min_theta(rho_p, 0, trap_profile)
+        # For convenience, to avoid if statements for 90 deg. (stationary in z)
+        center_pitch_angle = np.clip(center_pitch_angle, 0, 89.9999)
 
-        if center_pitch_angle < min_trapped_angle:
-            print("Warning: (avg_cyc) electron not trapped.")
-            return False
-
-        if center_pitch_angle == 90.0:
-            avg_cyc_freq = energy_to_freq(energy, Bmin)
-
-        else:
-
-            zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-            B1 = lambda z: trap_profile.field_strength(rho_pp, z)
-            B = lambda z: trap_profile.field_strength(rho_p, z)
-            Bmax = trap_profile.field_strength(rho_p, zmax)
-            integrand = lambda z: B1(z) * ((1 - B(z) / Bmax) ** (-0.5))
-
+        # we should not be redoing integrals which are the bottleneck of the Monte Carlo, by default
+        if ax_freq is None:
             ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile)
 
-            # Similar to axial_freq calculation.
-            b_avg = (
-                4
-                * ax_freq
-                / (velocity(energy))
-                * integrate.quad(integrand, 0, zmax, epsrel=10**-3)[0]
-            )
+        c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+
+        rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+        rho_pp = np.sqrt(rho**2 + c_r**2)
+        correction_factor = trap_profile.field_strength(rho_pp, 0) / trap_profile.field_strength(rho_p, 0)
+
+        # Field at center of trap
+        B0 = trap_profile.field_strength(rho_p, 0)
+        # Field at turning point
+        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        # Field in between (vs. instantaneous pitch angle)
+        B = lambda theta: Bmax * np.sin(theta / RAD_TO_DEG)**2
+
+        #Use conserved mu to derive
+        thetas = np.linspace(center_theta, 90, nIntegralPoints)
+        dTheta = thetas[1] - thetas[0]
+        integrand = np.sin(thetas)**3 / Bprime(B(thetas))
+
+        b_avg = correction_factor * 8 * Bmax**2 * ax_freq / (velocity(energy)) * np.trapz(integrand, dx=dTheta)
 
         return b_avg
 
@@ -406,7 +359,6 @@ def waveguide_beta(omega):
     """
     # fixed experiment parameters
     waveguide_radius = 0.578e-2
-    P11_PRIME = 1.84118  # first zero of J1 prime (bessel functions)
     kc = P11_PRIME / waveguide_radius
 
     # calculated parameters
@@ -479,7 +431,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     return result.y
 
 def instantaneous_frequency(energy, rho, avg_cycl_freq, vz, z=None, trap_profile=None, magnetic_modulation=False):
-    """ Computes the instantaneous (angular) frequency as a function of time. Magnetic modulation controls whether 
+    """ Computes the instantaneous (angular) frequency as a function of time. Magnetic modulation controls whether
         instantaneous changes in magnetic field are included, or just the Doppler effect. Defaults chosen so one could pass
         fewer arguments if not using magnetic_modulation
     """
