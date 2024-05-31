@@ -39,24 +39,25 @@ class SegmentBuilder:
             if event_index % 25 == 0:
                 print("\nBuilding Event :", event_index)
 
-            # Assign segment 0 of event with a segment_length.
-            scatter_time = self.segment_length_distribution.generate()
-
             # Fill the event with computationally intensive properties.
             event = self.fill_in_properties(event)
 
             event["time_start"] = self.start_time_distribution.generate()
             event["freq_start"] = event["avg_cycl_freq"]
 
-            # Begin with trapped beta (segment 0 of event).
+            # Assign track 0 of event with a scatter time.
+            scatter_time = event["time_start"] + self.segment_length_distribution.generate()
+
+            # Begin with trapped beta (track 0 of event).
             tracks = [event]
             is_trapped = True
             jump_num = 0
+            #TODO this may need to be more nuanced to account for lower sidebands
             max_freq = self.config.physics.freq_acceptance_high
 
             #TODO maybe this should be a different varibale in the config... or maybe just renamed
             trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
-            end_time = (trap_on_time, scatter_time) [scatter_time>trap_on_time]
+            end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
             
             while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
                 if self.verbosity == True: print(f"Event {event_index}, Jump {jump_num}")
@@ -90,6 +91,8 @@ class SegmentBuilder:
                     new_track["freq_start"] = freq
                     tracks.append(new_track)
                     jump_num += 1
+                    scatter_time = new_track["time_start"] + self.segment_length_distribution.generate()
+                    end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
                 else: 
                     is_trapped=False
 
