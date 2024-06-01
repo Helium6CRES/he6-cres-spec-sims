@@ -104,9 +104,7 @@ class Experiment:
 
         else:
             print("Directory already exists: {} ".format(experiment_dir))
-            print(
-                "CAREFUL: Continuing will delete the contents of the above directory.\n"
-            )
+            print( "CAREFUL: Continuing will delete the contents of the above directory.\n")
             input("Press Enter to continue...")
             rmtree(experiment_dir)
             experiment_dir.mkdir()
@@ -229,8 +227,8 @@ class ExpResults:
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
             print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
-            results = sim.Results.load(config_path)
-            tracks = results.dmtracks
+            results = sim.Results(None)
+            tracks = results.load(config_path)
             tracks["simulation_num"] = i
             tracks["field"] = field
             tracks["trap_current"] = trap_current
