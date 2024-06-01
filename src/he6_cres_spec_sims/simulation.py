@@ -66,7 +66,8 @@ class Simulation:
         """ Load existing data using Results class (skipping regenerating betas)
         """
         try:
-            results = Results.load(self.config_path)
+            results = Results(None)
+            dmtracks = results.load(self.config_path)
         except Exception as e:
             print("You don't have results to run the daq on.")
             raise e
@@ -76,7 +77,7 @@ class Simulation:
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
         # Simulate the action of the Daq on the loaded dmtracks.
-        spec_array = daq.run(results.dmtracks)
+        spec_array = daq.run(dmtracks)
         specbuilder.run(spec_array)
 
         return None
