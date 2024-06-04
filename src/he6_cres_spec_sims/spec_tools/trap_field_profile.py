@@ -5,7 +5,7 @@ import pathlib
 import time
 
 import numpy as np
-from scipy.interpolate import interp2d
+from scipy.interpolate import RegularGridInterpolator
 from scipy.misc import derivative
 from scipy.optimize import fmin
 
@@ -29,7 +29,7 @@ class TrapFieldProfile:
         self.relative_depth = (main_field - self.field_strength(0, 0)) / main_field
 
     def initialize_field_strength_interp(self):
-        """Document"""
+        """Returns function object f(rho, z) which returns magnetic field (magnitudes?) as a function of position"""
         # TODO: hmm I guess these need to be hardcoded for the moment.
         waveguide_radius = 0.578e-2  # (m)
         trap_zmax = 5.5e-2  # (m)
@@ -41,10 +41,7 @@ class TrapFieldProfile:
 
         dir_path = pathlib.Path(__file__).parents[0]
 
-        pkl_path = (
-            dir_path
-            / "trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv"
-        )
+        pkl_path = dir_path / "trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv"
 
         try:
             with open(pkl_path, "r") as pkl_file:
@@ -57,13 +54,9 @@ class TrapFieldProfile:
         # Adjust the field values so they align with the given trap configuration.
         map_array = map_array * self.trap_current + self.main_field
         # Now use the map_array to do the interpolation.
-        B_interp2d = interp2d(rho_array, z_array, map_array, kind="cubic")
+        interp = RegularGridInterpolator((rho_array, z_array), map_array, method="cubic")
 
-        # Making it vectorized, meaning float or np array can be inputs.
-        def B_interp(rho, z):
-            return B_interp2d(rho, z)[0]
-
-        return np.vectorize(B_interp)
+        return interp
 
     def trap_width_calc(self):
         """
@@ -72,8 +65,7 @@ class TrapFieldProfile:
 
         field_func = self.field_strength
 
-        def func(z):
-            return -1 * field_func(0, z)
+        func = lambda z: -1 * field_func(0, z)
 
         maximum = fmin(func, 0, xtol=1e-12)[0]
         print("Trap width: ({},{})".format(-maximum, maximum))

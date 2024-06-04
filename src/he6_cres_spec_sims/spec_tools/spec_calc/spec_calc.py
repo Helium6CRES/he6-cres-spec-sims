@@ -205,7 +205,7 @@ def min_theta(rho, zpos, trap_profile):
         return False
 
 
-def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
+def max_zpos(energy, center_pitch_angle, rho, trap_profile):
     """Calculates the maximum axial length from center of trap as a
     function of center_pitch_angle and rho.
     """
@@ -275,8 +275,11 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
+def semiopen_simpson(v):
+    """Semi-Open Composite Simpson's Rule for fast/ vectorized integral evaluation"""
+    return np.sum(v,axis=0)  + v[1] * 11./12 - v[2] * 5./12 - v[-1] * 7./12 + v[-2]  * 1./12
 
-def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=100):
+def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
@@ -291,15 +294,22 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=10
         B0 = trap_profile.field_strength(rho_p, 0)
         # Field at turning point
         Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
-        # Field in between (vs. instantaneous pitch angle)
-        B = lambda theta: Bmax * np.sin(theta / RAD_TO_DEG)**2
+        B = lambda z: trap_profile.field_strength(rho_p, z)
 
-        #Use conserved mu to derive
-        thetas = np.linspace(center_theta, 90, nIntegralPoints)
-        dTheta = thetas[1] - thetas[0]
-        integrand = np.sin(thetas) / Bprime(B(thetas))
+        # Should optionally pass these in as argument to reuse calculations!
+        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
 
-        T_a = 8. * Bmax / velocity(energy) * np.trapz(integrand, dx=dTheta)
+        # See write-ups XXX for more information on this integral
+        u = np.linspace(0,1., nIntegralPoints)
+        du = u[1] - u[0]
+
+        u_array = u[:,np.newaxis]
+        zmax_array = zmax[np.newaxis,:]
+
+        integrand = u_array / np.sqrt(1. - B(zmax_array*(1.-u_array**2)) / Bmax)
+        integrand[0,:] = 0
+
+        T_a = 8. * zmax / velocity(energy) * semiopen_simpson(integrand) * du
 
         axial_frequency = 1. / T_a
 
@@ -313,7 +323,7 @@ def avg_cycl_freq(energy, center_pitch_angle, rho, trap_profile):
     field = b_avg(energy, center_pitch_angle, rho, trap_profile)
     return energy_to_freq(energy, field)
 
-def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=100):
+def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=200):
 
     """Calculates the average magnetic field experienced by an array of electrons
     with given kinetic energies, main fields, and center pitch angles.
@@ -332,21 +342,31 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
         rho_pp = np.sqrt(rho**2 + c_r**2)
-        correction_factor = trap_profile.field_strength(rho_pp, 0) / trap_profile.field_strength(rho_p, 0)
 
         # Field at center of trap
         B0 = trap_profile.field_strength(rho_p, 0)
         # Field at turning point
         Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
         # Field in between (vs. instantaneous pitch angle)
-        B = lambda theta: Bmax * np.sin(theta / RAD_TO_DEG)**2
+        Bp = lambda z: trap_profile.field_strength(rho_p, z)
+        Bpp = lambda z: trap_profile.field_strength(rho_pp, z)
 
-        #Use conserved mu to derive
-        thetas = np.linspace(center_theta, 90, nIntegralPoints)
-        dTheta = thetas[1] - thetas[0]
-        integrand = np.sin(thetas)**3 / Bprime(B(thetas))
+        # Should optionally pass these in as argument to reuse calculations!
+        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+        # Should optionally pass these in as argument to reuse calculations!
+        f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
-        b_avg = correction_factor * 8 * Bmax**2 * ax_freq / (velocity(energy)) * np.trapz(integrand, dx=dTheta)
+        # See write-ups XXX for more information on this integral
+        u = np.linspace(0,1., nIntegralPoints)
+        du = u[1] - u[0]
+
+        u_array = u[:,np.newaxis]
+        zmax_array = zmax[np.newaxis,:]
+
+        integrand = u_array * Bpp(zmax_array*(1-u_array**2)) / np.sqrt(1. - Bp(zmax_array*(1.-u_array**2)) / Bmax)
+        integrand[0,:] = 0
+
+        b_avg = 8. * zmax * f_a / velocity(energy) * semiopen_simpson(integrand) * du
 
         return b_avg
 
@@ -421,7 +441,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     ### Note: This is the non-relativistic magnetic moment. One gets the same ODE if M -> gamma M in the lambda ode.
     Bmin = trap_profile.field_strength(rho, 0)
     mu = p0**2 * np.sin(center_pitch_angle / RAD_TO_DEG )**2 / (2. * M * Bmin)
-    Bz = lambda z: trap_profile.field_strength(rho,z) 
+    Bz = lambda z: trap_profile.field_strength(rho,z)
     dBdz = lambda z: derivative(Bz, z, dx=1e-6)
     ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
     ode = lambda t, y: [y[1], - mu / M * dBdz(y[0])]
@@ -465,7 +485,7 @@ def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_
     return yf
 
 def format_sideband_array(sidebands_one, avg_cyc_freq, axial_freq, mod_index=np.nan, num_sidebands = 7):
-    """ Does formatting for array with list of sideband magnitudes (normalized), and their start frequencies. 
+    """ Does formatting for array with list of sideband magnitudes (normalized), and their start frequencies.
         Takes in 1-sided list of sideband magnitudes
     """
     # Calculate (2-sided) list of (frequency, amplitude) of sidebands
