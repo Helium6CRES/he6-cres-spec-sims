@@ -47,14 +47,15 @@ class Simulation:
 
         events = eventbuilder.run()
         tracks, segments = segmentbuilder.run(events)
-        # bands = bandbuilder.run(segments)
-        dmtracks = dmtrackbuilder.run(tracks)
+        bands = bandbuilder.run(tracks, segments)
+        dmtracks = dmtrackbuilder.run(bands)
         # if self.config.settings.sim_daq:
         #     spec_array = daq.run(dmtracks)
-
+        print(segments)
         # Save the results of the simulation:
         # For now only write dmtracks to keep things lightweight.
         results = Results(dmtracks)
+        # results = Results(tracks)
         results.save(self.config_path)
 
         return None

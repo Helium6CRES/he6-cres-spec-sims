@@ -59,6 +59,7 @@ class SegmentBuilder:
             trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
             end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
             
+            event_segments = []
             while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
                 if self.verbosity == True: print(f"Event {event_index}, Jump {jump_num}")
                 track_segments = []
@@ -66,7 +67,7 @@ class SegmentBuilder:
                 segment_radiated_power_tot = sc.power_larmor(field, freq)
                 while (t < end_time) and (freq < max_freq):
                     segment = self.create_segment(t, freq, segment_radiated_power_tot, end_time, max_freq, event_index,
-                                                   jump_num, field)
+                                                   jump_num, 0, field)
                     t, freq = segment.end_time, segment.end_freq
                     track_segments.append(segment)
 
@@ -76,7 +77,9 @@ class SegmentBuilder:
                 #TODO update all segment numbers to track numbers
                 tracks[-1]["segment_num"] = jump_num
 
-                segments.append(track_segments)
+                # for building bands later we set the band number using a dictionary key  
+                # (we need negative numbers so another nested arrat wouldnt work)
+                event_segments.append({0:track_segments})
                 tracks_list.append(tracks[-1].values.tolist())
 
                 # break out of loop if this track reached end of trap on time
@@ -88,13 +91,15 @@ class SegmentBuilder:
                     #TODO there is almost certainly a better way to pass/grab the new track info
                     new_track = next(self.fill_in_properties(new_track).iterrows())[1]
                     new_track["time_start"] = t
-                    new_track["freq_start"] = freq
+                    new_track["freq_start"] = new_track["avg_cycl_freq"]
                     tracks.append(new_track)
                     jump_num += 1
                     scatter_time = new_track["time_start"] + self.segment_length_distribution.generate()
                     end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
                 else: 
                     is_trapped=False
+
+            segments.append(event_segments)
 
         # TODO there may be a more elegant way to update the columns... but this works for now       
         columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
@@ -222,7 +227,7 @@ class SegmentBuilder:
 
         return df
     
-    def create_segment(self, time, freq, power, max_time, max_freq, event, track, b_avg):
+    def create_segment(self, time, freq, power, max_time, max_freq, event, track, band, b_avg):
         '''
         This function creates a track object for a given time and frequency. Currently only check that we are within
         segment length.
@@ -238,7 +243,7 @@ class SegmentBuilder:
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
         
         if linear_range[0] <= freq < linear_range[1]:
-            segment = LinearSegment(time, freq, power, event, track, max_time, max_freq, b_avg)
+            segment = LinearSegment(time, freq, power, event, track, band, max_time, max_freq, b_avg)
 
         return segment
 
@@ -248,21 +253,49 @@ class Segment:
     and end frequency and time and power, but  have different shapes and integrals.
     '''
 
-    def __init__(self, start_time, start_freq, start_power, event, track):
+    def __init__(self, start_time, start_freq, event, track, band, _power=None, _end_freq=None, _end_time=None,
+                  _track_type=None):
         self.start_freq = start_freq
         self.start_time = start_time
-        self.start_power = start_power
         self.event = event
         self.track = track
+        self.band = band
+        self.power = _power
+        self.end_freq = _end_freq
+        self.end_time = _end_time
+        self.track_type = _track_type
+
+    def set_power(self, power):
+        self.power = power
+        return self
+    
+    def set_band(self, band):
+        self.band = band
+        return self
+
+    def shift_frequency(self, shift):
+        self.start_freq += shift
+        self.end_freq += shift
+        return self
+    
+    def copy(self):
+        return Segment(self.start_freq, self.start_time,self.event,self.track,self.band,self.power,self.end_freq,
+                          self.end_time, self.track_type)
+    
+    def __repr__(self):
+        return f"{self.track_type} Segment"
+    
+    def __str__(self):
+        return f"{self.track_type} Segment \n Event: {self.event} \n Track: {self.track} \n Band: {self.band}"
 
     
 class LinearSegment(Segment):
-     def __init__(self, start_time, start_freq, start_power, event, track, max_time, max_freq, field):
-        super().__init__(start_time, start_freq, start_power, event, track)
+     def __init__(self, start_time, start_freq, total_power, event, track, band, max_time, max_freq, field):
+        super().__init__(start_time, start_freq, event, track, band)
         self.track_type = "Linear"
 
         start_energy = sc.freq_to_energy(start_freq, field)
-        self.slope = sc.df_dt( start_energy, field, start_power)
+        self.slope = sc.df_dt( start_energy, field, total_power)
 
         if self.slope*max_time < max_freq:
             self.end_freq = self.slope*max_time + start_freq

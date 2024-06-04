@@ -97,7 +97,6 @@ class Config:
                     self.eventbuilder = DotDict(config_dict["EventBuilder"])
                     self.segmentbuilder = DotDict(config_dict["SegmentBuilder"])
                     self.bandbuilder = DotDict(config_dict["BandBuilder"])
-                    self.trackbuilder = DotDict(config_dict["TrackBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])
 
