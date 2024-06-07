@@ -303,10 +303,12 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         return False
 
 def semiopen_simpson(v):
-    """Semi-Open Composite Simpson's Rule for fast/ vectorized integral evaluation"""
-    return np.sum(v,axis=0)  + v[1] * 11./12 - v[2] * 5./12 - v[-1] * 7./12 + v[-2]  * 1./12
+    """Semi-Open Composite Simpson's Rule for fast/ vectorized integral evaluation
+       Numerical Recipes, pg 162. Requires you to set v[0] = v[1] previously
+    """
+    return np.sum(v,axis=0)  - v[1] * 1./12 - v[2] * 5./12 - v[-1] * 7./12 + v[-2]  * 1./12
 
-def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20):
+def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
@@ -326,26 +328,22 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        zmax = np.array(zmax)
-        zmax = np.atleast_1d(zmax)
 
         # See write-ups XXX for more information on this integral
         u = np.linspace(0,1., nIntegralPoints)
-        du = u[1] - u[0]
+        du = u[1]
+        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
+        u[0] = u[1]
 
-        if zmax.size == 1:
-            zmax = float(zmax)
-            Bmax = float(Bmax)
-        else:
-            u = u[:,np.newaxis]
-            zmax = zmax[np.newaxis,:]
+        zmax_arr = np.atleast_1d(np.array(zmax))
+        Bmax_arr = np.atleast_1d(np.array(Bmax))
 
-        integrand = u / np.sqrt(1. - B(zmax *(1.-u**2)) / Bmax)
+        u = u[:,np.newaxis]
+        zmax_arr = zmax_arr[np.newaxis,:]
+        Bmax_arr = Bmax_arr[np.newaxis,:]
 
-        if integrand.ndim > 1:
-            integrand[0,:] = 0
-        else:
-            integrand[0] = 0
+        integrand = u / np.sqrt(1. - B(zmax_arr *(1.-u**2)) / Bmax_arr)
+        integrand[0,:] = 0
 
         T_a = 8. * zmax / velocity(energy) * semiopen_simpson(integrand) * du
 
@@ -391,27 +389,24 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        zmax = np.array(zmax)
-        zmax = np.atleast_1d(zmax)
         # Should optionally pass these in as argument to reuse calculations!
         f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
         # See write-ups XXX for more information on this integral
         u = np.linspace(0,1., nIntegralPoints)
-        du = u[1] - u[0]
+        du = u[1]
+        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
+        u[0] = u[1]
 
-        if zmax.size == 1:
-            zmax = float(zmax)
-            Bmax = float(Bmax)
-        else:
-            u = u[:,np.newaxis]
-            zmax = zmax[np.newaxis,:]
+        zmax_arr = np.atleast_1d(np.array(zmax))
+        Bmax_arr = np.atleast_1d(np.array(Bmax))
 
-        integrand = u * Bpp(zmax*(1-u**2)) / np.sqrt(1. - Bp(zmax*(1.-u**2)) / Bmax)
-        if integrand.ndim > 1:
-            integrand[0,:] = 0
-        else:
-            integrand[0] = 0
+        u = u[:,np.newaxis]
+        zmax_arr = zmax_arr[np.newaxis,:]
+        Bmax_arr = Bmax_arr[np.newaxis,:]
+
+        integrand = u * Bpp(zmax_arr*(1-u**2)) / np.sqrt(1. - Bp(zmax_arr*(1.-u**2)) / Bmax_arr)
+        integrand[0,:] = 0
 
         b_avg = 8. * zmax * f_a / velocity(energy) * semiopen_simpson(integrand) * du
 
