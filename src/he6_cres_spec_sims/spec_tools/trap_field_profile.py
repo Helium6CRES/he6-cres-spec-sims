@@ -5,10 +5,8 @@ import pathlib
 import time
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-from scipy.misc import derivative
+from scipy.interpolate import RectBivariateSpline
 from scipy.optimize import fmin
-
 
 class TrapFieldProfile:
     def __init__(self, main_field, trap_current):
@@ -53,10 +51,12 @@ class TrapFieldProfile:
 
         # Adjust the field values so they align with the given trap configuration.
         map_array = map_array * self.trap_current + self.main_field
+        map_array = np.transpose(map_array)
         # Now use the map_array to do the interpolation.
-        interp = RegularGridInterpolator((rho_array, z_array), map_array, method="cubic")
+        field_interp = RectBivariateSpline(rho_array, z_array, map_array)
 
-        return interp
+        #return evaluation function for use
+        return field_interp.ev
 
     def trap_width_calc(self):
         """
@@ -64,7 +64,6 @@ class TrapFieldProfile:
         """
 
         field_func = self.field_strength
-
         func = lambda z: -1 * field_func(0, z)
 
         maximum = fmin(func, 0, xtol=1e-12)[0]

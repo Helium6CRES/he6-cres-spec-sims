@@ -26,7 +26,6 @@ from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
 
-
 # Simple special relativity functions.
 
 
@@ -137,7 +136,6 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-
         min_field = trap_profile.field_strength(rho, 0)
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
@@ -205,19 +203,48 @@ def min_theta(rho, zpos, trap_profile):
         return False
 
 
-def max_zpos(energy, center_pitch_angle, rho, trap_profile):
-    """Calculates the maximum axial length from center of trap as a
-    function of center_pitch_angle and rho.
+@np.vectorize
+def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
+
+    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle and rho.
+       One would ideally prefer minimization which was not looped (with np.vectorize)
+       In practice, library multi-dimensional minimizers are slower, even if Jacobian is diagonal
     """
+
     if trap_profile.is_trap:
-        # Ok, so does this mean we now have an energy dependence on zmax? Yes.
-        c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
-        rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
-        Bmin = trap_profile.field_strength(rho_p, 0)
-        Bmax = Bmin / pow( np.sin(center_pitch_angle / RAD_TO_DEG), 2)
+        if center_pitch_angle < min_theta(rho, 0, trap_profile):
+            print("WARNING: Electron not trapped (zpos)")
+            return False
 
-        return trap_profile.field_strength_inverse_map(rho_p, Bmax)
+        else:
+            # Ok, so does this mean we now have an energy dependence on zmax? Yes.
+            c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+            rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+
+            min_field = trap_profile.field_strength(rho_p, 0)
+            max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
+
+            max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
+
+            func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
+
+            # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
+            solution = root_scalar(func, bracket=[0, trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
+            max_z = solution.root
+            curr_field = trap_profile.field_strength(rho_p, max_z)
+
+            if debug and (curr_field > max_reached_field):
+                print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
+                print("Bmax reached: ", curr_field)
+
+            if debug == True:
+                print("zlength: ", max_z)
+
+            if max_z > trap_profile.trap_width[1]:
+                print("Error Rate: ", max_z - trap_profile.trap_width[1])
+
+            return max_z
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
@@ -279,7 +306,7 @@ def semiopen_simpson(v):
     """Semi-Open Composite Simpson's Rule for fast/ vectorized integral evaluation"""
     return np.sum(v,axis=0)  + v[1] * 11./12 - v[2] * 5./12 - v[-1] * 7./12 + v[-2]  * 1./12
 
-def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
+def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20):
     """Calculates the axial frequency of trapped electrons."""
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
@@ -294,20 +321,31 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         B0 = trap_profile.field_strength(rho_p, 0)
         # Field at turning point
         Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+
         B = lambda z: trap_profile.field_strength(rho_p, z)
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmax = np.array(zmax)
+        zmax = np.atleast_1d(zmax)
 
         # See write-ups XXX for more information on this integral
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1] - u[0]
 
-        u_array = u[:,np.newaxis]
-        zmax_array = zmax[np.newaxis,:]
+        if zmax.size == 1:
+            zmax = float(zmax)
+            Bmax = float(Bmax)
+        else:
+            u = u[:,np.newaxis]
+            zmax = zmax[np.newaxis,:]
 
-        integrand = u_array / np.sqrt(1. - B(zmax_array*(1.-u_array**2)) / Bmax)
-        integrand[0,:] = 0
+        integrand = u / np.sqrt(1. - B(zmax *(1.-u**2)) / Bmax)
+
+        if integrand.ndim > 1:
+            integrand[0,:] = 0
+        else:
+            integrand[0] = 0
 
         T_a = 8. * zmax / velocity(energy) * semiopen_simpson(integrand) * du
 
@@ -353,6 +391,8 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmax = np.array(zmax)
+        zmax = np.atleast_1d(zmax)
         # Should optionally pass these in as argument to reuse calculations!
         f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
@@ -360,11 +400,18 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1] - u[0]
 
-        u_array = u[:,np.newaxis]
-        zmax_array = zmax[np.newaxis,:]
+        if zmax.size == 1:
+            zmax = float(zmax)
+            Bmax = float(Bmax)
+        else:
+            u = u[:,np.newaxis]
+            zmax = zmax[np.newaxis,:]
 
-        integrand = u_array * Bpp(zmax_array*(1-u_array**2)) / np.sqrt(1. - Bp(zmax_array*(1.-u_array**2)) / Bmax)
-        integrand[0,:] = 0
+        integrand = u * Bpp(zmax*(1-u**2)) / np.sqrt(1. - Bp(zmax*(1.-u**2)) / Bmax)
+        if integrand.ndim > 1:
+            integrand[0,:] = 0
+        else:
+            integrand[0] = 0
 
         b_avg = 8. * zmax * f_a / velocity(energy) * semiopen_simpson(integrand) * du
 
