@@ -343,7 +343,6 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         Bmax_arr = Bmax_arr[np.newaxis,:]
 
         integrand = u / np.sqrt(1. - B(zmax_arr *(1.-u**2)) / Bmax_arr)
-        integrand[0,:] = 0
 
         T_a = 8. * zmax / velocity(energy) * semiopen_simpson(integrand) * du
 
@@ -406,7 +405,6 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         Bmax_arr = Bmax_arr[np.newaxis,:]
 
         integrand = u * Bpp(zmax_arr*(1-u**2)) / np.sqrt(1. - Bp(zmax_arr*(1.-u**2)) / Bmax_arr)
-        integrand[0,:] = 0
 
         b_avg = 8. * zmax * f_a / velocity(energy) * semiopen_simpson(integrand) * du
 
