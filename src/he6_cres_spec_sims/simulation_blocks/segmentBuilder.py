@@ -67,7 +67,7 @@ class SegmentBuilder:
                 if jump_num >= self.config.segmentbuilder.jump_num_max:
                     break
 
-                print("Jump: {jump_num}".format(jump_num=jump_num))
+                #print("Jump: {jump_num}".format(jump_num=jump_num))
                 scattered_segment = event.copy()
 
                 # Create new scattered segment then check if its trapped
@@ -162,7 +162,7 @@ class SegmentBuilder:
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
-        b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
         zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
