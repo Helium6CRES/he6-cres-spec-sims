@@ -19,9 +19,9 @@ class TrackBuilder:
         # RJ: working on making this more physical, currently assuming beta monitor rate is equivalent to decay cell rate
         # Add time/freq start/stop.
         tracks_df = bands_df.copy()
-        tracks_df["time_start"] = np.NaN
-        tracks_df["time_stop"] = np.NaN
-        tracks_df["file_in_acq"] = np.NaN
+        tracks_df["time_start"] = np.nan
+        tracks_df["time_stop"] = np.nan
+        tracks_df["file_in_acq"] = np.nan
 
         tracks_df["freq_start"] = bands_df["avg_cycl_freq"]
         tracks_df["freq_stop"] = bands_df["slope"] * bands_df["segment_length"] + bands_df["avg_cycl_freq"]
