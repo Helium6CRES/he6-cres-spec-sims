@@ -458,7 +458,8 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         z_arg = zmax_arr *(1.-u**2)
         integrand = u * (2 - B(z_arg) / Bmax_arr) * dBdRho(z_arg)  / (np.sqrt(1. - B(z_arg) / Bmax_arr) * B(z_arg)**2)
 
-        grad_B_frequency = 4 / PI * (Ke * zmax * ax_freq) / (Q * rho  * velocity(energy)) * semiopen_simpson(integrand) * du
+        ### Energy == KINETIC ENERGY (γ-1) m c**2
+        grad_B_frequency = 4 / PI * (energy * zmax * ax_freq) / (Q * rho  * velocity(energy)) * semiopen_simpson(integrand) * du
 
         #We don't really care which direction it goes: just want to report a frequency
         grad_B_frequency = np.abs(grad_B_frequency)
