@@ -437,7 +437,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         B = lambda z: trap_profile.field_strength(rho, z)
 
         rho_delta = 1e-7
-        dBdRho = lambda z: (B(rho + rho_delta, z) - B(rho - rho_delta, z)) / (2. * rho_delta)
+        dBdRho = lambda z: (trap_profile.field_strength(rho + rho_delta, z) - trap_profile.field_strength(rho - rho_delta, z)) / (2. * rho_delta)
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
@@ -458,8 +458,8 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         z_arg = zmax_arr *(1.-u**2)
         integrand = u * (2 - B(z_arg) / Bmax_arr) * dBdRho(z_arg)  / (np.sqrt(1. - B(z_arg) / Bmax_arr) * B(z_arg)**2)
 
-        ### Energy == KINETIC ENERGY (γ-1) m c**2
-        grad_B_frequency = 4 / PI * (energy * zmax * ax_freq) / (Q * rho  * velocity(energy)) * semiopen_simpson(integrand) * du
+        ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
+        grad_B_frequency = 4 / PI * (energy * zmax * ax_freq) / (rho  * velocity(energy)) * semiopen_simpson(integrand) * du
 
         #We don't really care which direction it goes: just want to report a frequency
         grad_B_frequency = np.abs(grad_B_frequency)

@@ -121,6 +121,7 @@ class EventBuilder:
             "freq_stop": 0.0,
             "zmax": 0.0,
             "axial_freq": 0.0,
+            "grad_b_freq": 0.0,
             "mod_index": 0.0,
             "segment_power": 0.0,
             "slope": 0.0,
