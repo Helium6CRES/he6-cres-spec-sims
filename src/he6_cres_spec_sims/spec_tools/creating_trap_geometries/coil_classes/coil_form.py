@@ -2,7 +2,9 @@ import math
 import numpy as np
 from scipy.integrate import romberg
 from scipy.misc import derivative
-
+import sys
+sys.path.insert(1,"/home/lm11887/He6CRES/he6-cres-spec-sims/src")
+from he6_cres_spec_sims.constants import *
 
 class Coil_form:
     """

@@ -16,6 +16,9 @@ Frequency: Hz
 Power    : W
 ---
 """
+
+# TODO at some point: fix inconsistent notation eg Bmin/min_field Bmax/max_field
+
 import numpy as np
 
 import scipy.integrate as integrate
@@ -103,7 +106,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
 
     if trap_profile.is_trap:
 
-        Bmin = trap_profile.field_strength(rho, 0.0)
+        Bmin = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
         Bcurr = trap_profile.field_strength(rho, zpos)
 
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
@@ -136,7 +139,7 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-        min_field = trap_profile.field_strength(rho, 0)
+        min_field = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -165,7 +168,7 @@ def min_radius(energy, center_pitch_angle, rho, trap_profile):
 
     if trap_profile.is_trap:
 
-        min_field = trap_profile.field_strength(rho, 0)
+        min_field = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -202,7 +205,6 @@ def min_theta(rho, zpos, trap_profile):
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
-
 @np.vectorize
 def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
@@ -213,17 +215,17 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
     if trap_profile.is_trap:
 
-        if center_pitch_angle < min_theta(rho, 0, trap_profile):
+        if center_pitch_angle < min_theta(rho, trap_profile.trap_center, trap_profile):
             print("WARNING: Electron not trapped (zpos)")
             return False
 
         else:
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
-            c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+            c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
-            min_field = trap_profile.field_strength(rho_p, 0)
-            max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
+            min_field = trap_profile.Bmin(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_center)
+            max_field = trap_profile.Bmax(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
 
