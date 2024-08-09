@@ -1,8 +1,4 @@
-import csv
-import math
-import os
 import pathlib
-import time
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
@@ -19,11 +15,11 @@ class TrapFieldProfile:
         self.inverted = trap_current*main_field < 0
         self.main_field = main_field
 
-        self.field_strength = self.initialize_field_strength_interp()
-        self.trap_center = self.find_trap_center() if self.inverted else 0 # may vary with rho, need to fully implement
+            self.field_strength = self.initialize_field_strength_interp()
+            self.trap_center = self.find_trap_center() if self.inverted else 0 # may vary with rho, need to fully implement. may end up being handled on the eventBuilder side instead
 
-        self.trap_width = self.trap_width_calc()
-        
+            self.trap_width = self.trap_width_calc()
+            
         # min and max fields of trap with rho dependence
         # rho dependence means calling fmin a lot, might be slow
         # TODO: find out if/how much trap_center depends on rho
@@ -33,7 +29,7 @@ class TrapFieldProfile:
         # TODO: Actually test to be sure it is a trap.
         self.is_trap = True
 
-        self.relative_depth = (main_field - self.field_strength(0, 0)) / main_field
+        # self.relative_depth = (main_field - self.Bmin()) / main_field # unused?
 
     def initialize_field_strength_interp(self):
         """Returns function object f(rho, z) which returns magnetic field (magnitudes?) as a function of position"""
@@ -76,7 +72,8 @@ class TrapFieldProfile:
 
     def trap_width_calc(self):
         """
-        Calculates the trap width of the object trap_profile.
+        Calculates the trap width of the object trap_profile at rho = 0.
+        Is it useful to add optional rho dependence?
         """
 
         field_func = self.field_strength

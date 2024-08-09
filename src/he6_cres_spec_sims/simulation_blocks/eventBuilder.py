@@ -96,6 +96,14 @@ class EventBuilder:
         max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
         min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
 
+        # precompute trap parameters at rho_center
+        trap_center = self.config.trap_profile.find_trap_center(rho_center)
+
+        Bmin = self.config.trap_profile.Bmin(rho_center)
+        Bmax = self.config.trap_profile.Bmax(rho_center)
+
+        # Bmax_reached, zmax, zmin, trap_width
+
         segment_properties = {
             "energy": beta_energy,
             "gamma": sc.gamma(beta_energy),
