@@ -17,7 +17,7 @@ Power    : W
 ---
 """
 
-# TODO at some point: fix inconsistent notation eg Bmin/min_field Bmax/max_field
+# TODO at some point: fix inconsistent notation eg Bmin/min_field Bmax/max_field Bmax_reached/b_turn
 
 import numpy as np
 
@@ -106,10 +106,17 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
 
     if trap_profile.is_trap:
 
-        Bmin = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
+        Bmin = trap_profile.Bmin(rho) 
         Bcurr = trap_profile.field_strength(rho, zpos)
 
+        # TODO: resolve why this sometimes returns nan
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
+
+        # debugging
+        if np.any(np.isnan(theta_center_calc)):
+            print(f"rho = {rho}, z = {zpos}\nBmin = {Bmin}, Bcurr = {Bcurr}")
+            print("theta_center_calc returned NaN")
+            return False
 
         return theta_center_calc
 
@@ -128,6 +135,12 @@ def cyc_radius(energy, field, pitch_angle):
 
     cyc_radius = (gamma(energy) * M * vel_perp) / (Q * field)
 
+    # debugging
+    if np.any(np.isnan(cyc_radius)):
+        print(f"\nArguments: energy = {energy}, field = {field}, pitch_angle = {pitch_angle}")
+        print(f"vel_perp = {vel_perp}, cyc_radius = {cyc_radius}")
+        # breakpoint()
+
     return cyc_radius
 
 
@@ -139,7 +152,7 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-        min_field = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
+        min_field = trap_profile.Bmin(rho) 
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -168,7 +181,7 @@ def min_radius(energy, center_pitch_angle, rho, trap_profile):
 
     if trap_profile.is_trap:
 
-        min_field = trap_profile.Bmin(rho) # trap_profile.field_strength(rho, trap_profile.trap_center)
+        min_field = trap_profile.Bmin(rho) 
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -195,10 +208,17 @@ def min_theta(rho, zpos, trap_profile):
     """
     if trap_profile.is_trap:
         # Be careful here. Technically the Bmax doesn't occur at a constant z.
+        # TODO: review math for asym. trap: can have Bz>Bmax near z=0 as defined here
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
 
-        theta = np.arcsin((Bz / Bmax) ** 0.5) * RAD_TO_DEG
+        theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
+
+        # debugging
+        if np.isnan(theta):
+            print(f"rho = {rho}, z = {zpos}\nBmax = {Bmax}, Bz = {Bz}")
+            # raise ValueError("min_theta returned NaN, probably Bz > Bmax")
+
         return theta
 
     else:
@@ -215,24 +235,29 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
     if trap_profile.is_trap:
 
-        if center_pitch_angle < min_theta(rho, trap_profile.trap_center, trap_profile):
-            print("WARNING: Electron not trapped (zpos)")
+        if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
+            print("WARNING: Electron not trapped (max_zpos)")
             return False
 
         else:
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
             c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+            
+            if np.any(rho_p > 0.578e-2):
+                print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
 
-            min_field = trap_profile.Bmin(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_center)
-            max_field = trap_profile.Bmax(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
+            min_field = trap_profile.Bmin(rho_p) 
+            max_field = trap_profile.Bmax(rho_p) 
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
+            if max_reached_field > max_field:
+                print("WARNING: Electron not trapped (max_zpos)")
 
             func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
 
             # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
-            solution = root_scalar(func, bracket=[trap_profile.trap_center, trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
+            solution = root_scalar(func, bracket=[trap_profile.trap_center(rho), trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
             max_z = solution.root
             curr_field = trap_profile.field_strength(rho_p, max_z)
 
@@ -263,28 +288,30 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
 
     if trap_profile.is_trap:
 
-        if center_pitch_angle < min_theta(rho, trap_profile.trap_center, trap_profile):
-            print("WARNING: Electron not trapped (zpos)")
+        if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
+            print("WARNING: Electron not trapped (min_zpos)")
             return False
 
         elif max_z is not None: # and not trap_profile.inverted: 
-            min_z = 2*trap_profile.find_trap_center(rho) - max_z
+            min_z = 2*trap_profile.trap_center(rho) - max_z
             return min_z
 
         else:
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
             c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+            if rho_p > 0.578e-2:
+                print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
 
-            min_field = trap_profile.Bmin(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_center)
-            max_field = trap_profile.Bmax(rho_p) # trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
+            min_field = trap_profile.Bmin(rho_p) 
+            max_field = trap_profile.Bmax(rho_p)
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
 
             func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
 
             # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
-            solution = root_scalar(func, bracket=[trap_profile.trap_width[0], trap_profile.trap_center], method='brentq', xtol=1e-14)
+            solution = root_scalar(func, bracket=[trap_profile.trap_width[0], trap_profile.trap_center(rho)], method='brentq', xtol=1e-14)
             min_z = solution.root
             curr_field = trap_profile.field_strength(rho_p, max_z)
 
@@ -372,11 +399,18 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         # Get cyclotron-radius modified "effective" guiding center rho
         c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+        # debugging
+
+        if np.any(rho_p > 0.578e-2):
+            print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
 
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
         Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bmax > trap_profile.Bmax(rho_p)):
+            print("WARNING: Electron not trapped (axial_freq)")
+            return False
 
         B = lambda z: trap_profile.field_strength(rho_p, z)
 
@@ -395,7 +429,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
 
         u = u[:,np.newaxis]
 
-        zc = trap_profile.trap_center
+        zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
 
@@ -448,12 +482,20 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         c_r = cyc_radius(energy, trap_profile.Bmin(rho), center_pitch_angle)
 
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+        if np.any(rho_p > 0.578e-2):
+            print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
+        
         rho_pp = np.sqrt(rho**2 + c_r**2)
+        if np.any(rho_pp > 0.578e-2):
+            print(f"#####\nrho_pp = {rho_pp} exceeds the waveguide radius, odd behavior may occur \n #####")
 
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
         Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bmax > trap_profile.Bmax(rho_p)):
+            print("WARNING: Electron not trapped (b_avg)")
+            return False
         # Field in between (vs. instantaneous pitch angle)
         Bp = lambda z: trap_profile.field_strength(rho_p, z)
         Bpp = lambda z: trap_profile.field_strength(rho_pp, z)
@@ -474,7 +516,7 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         u = u[:,np.newaxis]
 
-        zc = trap_profile.trap_center
+        zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
         

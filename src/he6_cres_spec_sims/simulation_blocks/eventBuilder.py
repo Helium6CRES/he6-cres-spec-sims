@@ -89,20 +89,28 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
+        # debugging
+        if np.any(np.isnan(rho_center)):
+            print("WARNING: rho_center is nan")
+            # breakpoint()
+        if np.any(rho_center > 5.78e-3):
+            print(f"WARNING: rho_center = {rho_center} exceeds waveguide radius!")
+            # breakpoint()
+
+        ## TODO: resolve arcsin runtimewarning that causes this to return nan
+        ##
         center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
+
+        # Use B at turning point to determine if trapped
+        b_min = self.config.trap_profile.Bmin(rho_center)
+        b_max = self.config.trap_profile.Bmax(rho_center)
+        b_turn = b_min / pow( math.sin(center_theta / RAD_TO_DEG), 2)
 
         # Use trapped_initial_theta to determine if trapped.
         trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
         max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
         min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
 
-        # precompute trap parameters at rho_center
-        trap_center = self.config.trap_profile.find_trap_center(rho_center)
-
-        Bmin = self.config.trap_profile.Bmin(rho_center)
-        Bmax = self.config.trap_profile.Bmax(rho_center)
-
-        # Bmax_reached, zmax, zmin, trap_width
 
         segment_properties = {
             "energy": beta_energy,
@@ -128,6 +136,7 @@ class EventBuilder:
             "b_avg": 0.0,
             "freq_stop": 0.0,
             "zmax": 0.0,
+            "zmin": 0.0,
             "axial_freq": 0.0,
             "mod_index": 0.0,
             "segment_power": 0.0,
@@ -144,6 +153,10 @@ class EventBuilder:
             "energy_accept_low": self.physics.energy_acceptance_low,
             "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
             "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
+            "trap_center": 0.0, # rename to z_center?
+            "b_min": b_min,
+            "b_max": b_max, # not used much, could get rid of this
+            "b_turn": b_turn,
         }
 
         segment_df = pd.DataFrame(segment_properties, index=[event_num])
@@ -157,12 +170,18 @@ class EventBuilder:
 
         if segment_df.shape[0] != 1:
             raise ValueError("trap_condition(): Input segment not a single row.")
-
+        
         initial_theta = segment_df["initial_theta"][0]
         trapped_initial_theta = segment_df["trapped_initial_theta"][0]
         rho_center = segment_df["rho_center"][0]
         max_radius = segment_df["max_radius"][0]
         energy = segment_df["energy"][0]
+        b_turn = segment_df["b_turn"][0]
+        b_max = segment_df["b_max"][0]
+
+        if b_turn > b_max:
+            print("Not Trapped: Turning point beyond trap limits.")
+            return False
 
         if initial_theta < trapped_initial_theta:
             # print("Not Trapped: Pitch angle too small.")

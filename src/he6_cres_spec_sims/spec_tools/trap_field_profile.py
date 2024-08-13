@@ -1,7 +1,7 @@
 import pathlib
 
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, CubicSpline
 from scipy.optimize import fmin
 
 class TrapFieldProfile:
@@ -15,16 +15,15 @@ class TrapFieldProfile:
         self.inverted = trap_current*main_field < 0
         self.main_field = main_field
 
-            self.field_strength = self.initialize_field_strength_interp()
-            self.trap_center = self.find_trap_center() if self.inverted else 0 # may vary with rho, need to fully implement. may end up being handled on the eventBuilder side instead
+        self.field_strength = self.initialize_field_strength_interp()
+        self.trap_center = self.initialize_trap_center_interp()
 
-            self.trap_width = self.trap_width_calc()
+        self.trap_width = self.trap_width_calc()
             
         # min and max fields of trap with rho dependence
-        # rho dependence means calling fmin a lot, might be slow
         # TODO: find out if/how much trap_center depends on rho
-        self.Bmin = lambda rho = 0: self.field_strength(rho, self.find_trap_center(rho)) # self.field_strength(rho, self.trap_center) 
-        self.Bmax = lambda rho = 0: self.main_field if self.inverted else self.field_strength(rho,self.trap_width[1]) 
+        self.Bmin = lambda rho = 0: self.field_strength(rho, self.trap_center(rho)) 
+        self.Bmax = lambda rho = 0: self.field_strength(rho,self.trap_width[1]) 
 
         # TODO: Actually test to be sure it is a trap.
         self.is_trap = True
@@ -63,11 +62,35 @@ class TrapFieldProfile:
         #return evaluation function for use
         return field_interp.ev
 
+    def initialize_trap_center_interp(self):
+        """Returns function f(rho) which returns the trap center as a function of rho"""
+        waveguide_radius = 0.578e-2 # (m)
+        grid_edge_length = 4e-4 # (m)
+        rho_array = np.arange(0, waveguide_radius, grid_edge_length)
+        trap_center_array = np.zeros(np.size(rho_array))
+        
+        # too lazy to vectorize since this shouldn't be called that often
+        for i in range(len(rho_array)):
+            trap_center_array[i] = self.find_trap_center(rho_array[i]) 
+        
+        
+        # TODO: catch why it's sometimes calling rho>waveguide radius and returning NaN
+        # for now set extrapolate=False
+        trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=False)
+        
+        return trap_center_interp 
+
     def find_trap_center(self, rho = 0):
         """finds the z-position of the center of an inverted trap"""
+
+        waveguide_radius = 0.578e-2 # (m)
+        if rho > waveguide_radius:
+            print(f"rho = {rho}")
+            raise ValueError("rho exceeds the waveguide radius!")
         func = lambda z: self.field_strength(rho, z)
         z_side_coil = 4.3e-2
-        z_center = fmin(func, z_side_coil, xtol=1e-12)[0]
+        z_center = fmin(func, z_side_coil, xtol=1e-12)[0] # disp=False to suppress output
+        print(f"Trap center at rho={rho}: {z_center}")
         return z_center
 
     def trap_width_calc(self):
@@ -92,3 +115,18 @@ class TrapFieldProfile:
             trap_width = (-maximum, maximum)
 
         return trap_width #- self.trap_center
+
+    def test_trap_asym(self, z):
+        """
+        Returns field strength for ideal asymmetrical harmonic trap
+        currently unused
+        """
+        
+        a = 0.1
+        b = 0.05
+        test_center = 0
+
+        if z > test_center:
+            return a*(z-test_center)**2 + self.main_field
+        else:
+            return b*(z-test_center)**2 + self.main_field

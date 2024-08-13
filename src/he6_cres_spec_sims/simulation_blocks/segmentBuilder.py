@@ -158,13 +158,21 @@ class SegmentBuilder:
         main_field = self.config.eventbuilder.main_field
         decay_cell_radius = self.config.eventbuilder.decay_cell_radius
 
+        # print("\n")
+        # print(df)
+        # print("\n")
         # Calculate all relevant segment parameters. Order matters here.
+        trap_center = trap_profile.trap_center(df["rho_center"])
+
+        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        zmin = sc.min_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
         b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
-        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
 
         segment_radiated_power_te11 = (
@@ -201,6 +209,8 @@ class SegmentBuilder:
         df["freq_stop"] = freq_stop
         df["energy_stop"] = energy_stop
         df["zmax"] = zmax
+        df["zmin"] = zmin
+        df["trap_center"] = trap_center
         df["mod_index"] = mod_index
         df["slope"] = slope
         df["segment_power"] = segment_power
