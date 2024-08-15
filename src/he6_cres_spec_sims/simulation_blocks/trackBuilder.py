@@ -34,8 +34,11 @@ class TrackBuilder:
         for index, row in bands_df[bands_df["segment_num"] == 0.0].iterrows():
             event_num = int(tracks_df["event_num"][index])
             file_num = int(trapped_event_start_times[event_num] // self.config.daq.spec_length)
-            tracks_df["time_start"][index] = trapped_event_start_times[event_num] - self.config.daq.spec_length*file_num
-            tracks_df["file_in_acq"][index] = file_num
+            # updating some pandas behavior that will be deprecated in pandas 3.0
+            # tracks_df["time_start"][index] = trapped_event_start_times[event_num] - self.config.daq.spec_length*file_num
+            tracks_df.loc[index, "time_start"] = trapped_event_start_times[event_num] - self.config.daq.spec_length*file_num
+            # tracks_df["file_in_acq"][index] = file_num
+            tracks_df.loc[index, "file_in_acq"] = file_num
 
         for event in range(0, events_simulated):
             # find max segment_num for each event
@@ -52,13 +55,15 @@ class TrackBuilder:
                 previous_segment_time_start = tracks_df[previous_time_condition][ "time_start" ].iloc[0]
                 previous_segment_length = tracks_df[previous_time_condition][ "segment_length" ].iloc[0]
 
-                file_num = tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)]["file_in_acq"]
+                file_num = tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)]["file_in_acq"][0]
 
                 for index, row in tracks_df[fill_condition].iterrows():
-                    tracks_df["time_start"][index] = previous_segment_time_start + previous_segment_length
-
+                    # updating some pandas behavior that will be deprecated in pandas 3.0
+                    # tracks_df["time_start"][index] = previous_segment_time_start + previous_segment_length
+                    tracks_df.loc[index, "time_start"] = previous_segment_time_start + previous_segment_length
                     #inherit file_in_acq from parent event
-                    tracks_df["file_in_acq"][index] = file_num
+                    # tracks_df["file_in_acq"][index] = file_num
+                    tracks_df.loc[index, "file_in_acq"] = file_num
 
         tracks_df["time_stop"] = tracks_df["time_start"] + tracks_df["segment_length"]
 
