@@ -15,10 +15,16 @@ class TrapFieldProfile:
         self.inverted = trap_current*main_field < 0
         self.main_field = main_field
 
-        self.field_strength = self.initialize_field_strength_interp()
+        test_asym = True
+        if test_asym:
+            self.field_strength = self.test_trap_asym
+            self.trap_width = (-0.055,0.055)
+        else:
+            self.field_strength = self.initialize_field_strength_interp()
+            self.trap_width = self.trap_width_calc()
+
         self.trap_center = self.initialize_trap_center_interp()
 
-        self.trap_width = self.trap_width_calc()
             
         # min and max fields of trap with rho dependence
         # TODO: find out if/how much trap_center depends on rho
@@ -83,6 +89,9 @@ class TrapFieldProfile:
     def find_trap_center(self, rho = 0):
         """finds the z-position of the center of an inverted trap"""
 
+        if not self.inverted:
+            return 0.
+
         waveguide_radius = 0.578e-2 # (m)
         if rho > waveguide_radius:
             print(f"rho = {rho}")
@@ -99,10 +108,8 @@ class TrapFieldProfile:
         Is it useful to add optional rho dependence?
         """
 
-        field_func = self.field_strength
-        
-        func = lambda z: -1 * field_func(0, z)
-        
+        func = lambda z: -1 * self.field_strength(0, z)
+
         if self.inverted:
             trap_zmax = 5.5e-2  # (m)
             print("Inverted trap width: (0, {})".format(trap_zmax))
@@ -114,19 +121,17 @@ class TrapFieldProfile:
             print("Maximum Field: {}".format(-1 * func(maximum)))
             trap_width = (-maximum, maximum)
 
-        return trap_width #- self.trap_center
+        return trap_width
 
-    def test_trap_asym(self, z):
+    def test_trap_asym(self, rho, z):
         """
         Returns field strength for ideal asymmetrical harmonic trap
         currently unused
         """
         
-        a = 0.1
-        b = 0.05
-        test_center = 0
-
-        if z > test_center:
-            return a*(z-test_center)**2 + self.main_field
-        else:
-            return b*(z-test_center)**2 + self.main_field
+        a = 0.2
+        b = 0.1
+        test_center = 0.01
+        
+        return ((z  > test_center) * (a*(z-test_center)**2 + self.main_field) + 
+                (z <= test_center) * (b*(z-test_center)**2 + self.main_field) - 1e-4)

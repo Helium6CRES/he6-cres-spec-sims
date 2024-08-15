@@ -116,7 +116,6 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
         if np.any(np.isnan(theta_center_calc)):
             print(f"rho = {rho}, z = {zpos}\nBmin = {Bmin}, Bcurr = {Bcurr}")
             print("theta_center_calc returned NaN")
-            return False
 
         return theta_center_calc
 
@@ -211,7 +210,10 @@ def min_theta(rho, zpos, trap_profile):
         # TODO: review math for asym. trap: can have Bz>Bmax near z=0 as defined here
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
-
+        
+        if Bz>Bmax:
+            print("aaaaa (min_theta)")
+            return False
         theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
 
         # debugging
@@ -313,7 +315,7 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
             # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
             solution = root_scalar(func, bracket=[trap_profile.trap_width[0], trap_profile.trap_center(rho)], method='brentq', xtol=1e-14)
             min_z = solution.root
-            curr_field = trap_profile.field_strength(rho_p, max_z)
+            curr_field = trap_profile.field_strength(rho_p, min_z)
 
             if debug and (curr_field > max_reached_field):
                 print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
@@ -391,6 +393,7 @@ def semiopen_simpson(v):
 
 def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
+    
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
         # Sets allowed range, "clipping" the pitches at 90 deg.
@@ -444,7 +447,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
             zmin_arr = np.atleast_1d(np.array(zmin))
             zmin_arr = zmin_arr[np.newaxis,:]
 
-            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. + u**2) + zc_arr*u**2)/Bmax_arr)
+            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bmax_arr) # check sign of 1-u^2 !!!!
 
             T_a2 = 4. * (zc - zmin) / velocity(energy) * semiopen_simpson(integrand2) * du
       

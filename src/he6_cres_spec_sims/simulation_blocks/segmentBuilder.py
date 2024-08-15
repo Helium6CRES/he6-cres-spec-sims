@@ -173,7 +173,7 @@ class SegmentBuilder:
         b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
 
-        mod_index = sc.mod_index(avg_cycl_freq, zmax)
+        mod_index = sc.mod_index(avg_cycl_freq, zmax) # zmax broken?
 
         segment_radiated_power_te11 = (
             pc.power_calc(
@@ -191,7 +191,7 @@ class SegmentBuilder:
         # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
 
         energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
-
+        # breakpoint()
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
             energy_stop[energy_stop < 0]  = 1e-10
