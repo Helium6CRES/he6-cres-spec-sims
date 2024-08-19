@@ -183,7 +183,7 @@ class EventBuilder:
         b_max = segment_df["b_max"][0]
 
         if b_turn > b_max:
-            print("Not Trapped: Turning point beyond trap limits.")
+            # print("Not Trapped: Turning point beyond trap limits.")
             return False
 
         if initial_theta < trapped_initial_theta:
@@ -193,5 +193,5 @@ class EventBuilder:
         if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
             # print("Not Trapped: Collided with guide wall.")
             return False
-
+        
         return True
