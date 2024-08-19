@@ -410,8 +410,8 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
-        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
-        if np.any(Bmax > trap_profile.Bmax(rho_p)):
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bturn > trap_profile.Bmax(rho_p)):
             print("WARNING: Electron not trapped (axial_freq)")
             return False
 
@@ -421,9 +421,9 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
         
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bmax_arr = np.atleast_1d(np.array(Bmax))
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bmax_arr = Bmax_arr[np.newaxis,:]
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
@@ -438,7 +438,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
 
         # See write-ups XXX for more information on this integral
         # integrate from trap center to zmax (1/4 period)
-        integrand1 = u / np.sqrt(1. - B(zmax_arr*(1. - u**2) + zc_arr*u**2)/Bmax_arr)
+        integrand1 = u / np.sqrt(1. - B(zmax_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr)
         T_a1 = 4. * (zmax - zc) / velocity(energy) * semiopen_simpson(integrand1) * du
 
         if trap_profile.inverted:
@@ -447,7 +447,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
             zmin_arr = np.atleast_1d(np.array(zmin))
             zmin_arr = zmin_arr[np.newaxis,:]
 
-            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bmax_arr) # check sign of 1-u^2 !!!!
+            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr) # check sign of 1-u^2 !!!!
 
             T_a2 = 4. * (zc - zmin) / velocity(energy) * semiopen_simpson(integrand2) * du
       
@@ -495,8 +495,8 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
-        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
-        if np.any(Bmax > trap_profile.Bmax(rho_p)):
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bturn > trap_profile.Bmax(rho_p)):
             print("WARNING: Electron not trapped (b_avg)")
             return False
         # Field in between (vs. instantaneous pitch angle)
@@ -508,9 +508,9 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         # Should optionally pass these in as argument to reuse calculations!
 
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bmax_arr = np.atleast_1d(np.array(Bmax))
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bmax_arr = Bmax_arr[np.newaxis,:]
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
@@ -523,7 +523,7 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
         
-        integrand1 = u * Bpp(zmax_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmax_arr*(1. - u**2) + zc_arr*u**2) / Bmax_arr)
+        integrand1 = u * Bpp(zmax_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmax_arr*(1. - u**2) + zc_arr*u**2) / Bturn_arr)
 
         b_avg1 = 4. * ax_freq / velocity(energy) * (zmax - zc) * semiopen_simpson(integrand1) * du
 
@@ -532,7 +532,7 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
             zmin_arr = np.atleast_1d(np.array(zmin))
             zmin_arr = zmin_arr[np.newaxis,:]
 
-            integrand2 = u * Bpp(zmin_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmin_arr*(1. - u**2) + zc_arr*u**2) / Bmax_arr)
+            integrand2 = u * Bpp(zmin_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmin_arr*(1. - u**2) + zc_arr*u**2) / Bturn_arr)
 
             b_avg2 = 4. * ax_freq / velocity(energy) * (zc - zmin) * semiopen_simpson(integrand2) * du
  
