@@ -113,9 +113,9 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
 
         # debugging
-        if np.any(np.isnan(theta_center_calc)):
-            print(f"rho = {rho}, z = {zpos}\nBmin = {Bmin}, Bcurr = {Bcurr}")
-            print("theta_center_calc returned NaN")
+        # if np.any(np.isnan(theta_center_calc)):
+        #     print(f"rho = {rho}, z = {zpos}\nBmin = {Bmin}, Bcurr = {Bcurr}")
+        #     print("theta_center_calc returned NaN")
 
         return theta_center_calc
 
@@ -135,10 +135,10 @@ def cyc_radius(energy, field, pitch_angle):
     cyc_radius = (gamma(energy) * M * vel_perp) / (Q * field)
 
     # debugging
-    if np.any(np.isnan(cyc_radius)):
-        print(f"\nArguments: energy = {energy}, field = {field}, pitch_angle = {pitch_angle}")
-        print(f"vel_perp = {vel_perp}, cyc_radius = {cyc_radius}")
-        # breakpoint()
+    # if np.any(np.isnan(cyc_radius)):
+    #     print(f"\nArguments: energy = {energy}, field = {field}, pitch_angle = {pitch_angle}")
+    #     print(f"vel_perp = {vel_perp}, cyc_radius = {cyc_radius}")
+    #     # breakpoint()
 
     return cyc_radius
 
@@ -217,9 +217,9 @@ def min_theta(rho, zpos, trap_profile):
         theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
 
         # debugging
-        if np.isnan(theta):
-            print(f"rho = {rho}, z = {zpos}\nBmax = {Bmax}, Bz = {Bz}")
-            # raise ValueError("min_theta returned NaN, probably Bz > Bmax")
+        # if np.isnan(theta):
+        #     print(f"rho = {rho}, z = {zpos}\nBmax = {Bmax}, Bz = {Bz}")
+        #     raise ValueError("min_theta returned NaN, probably Bz > Bmax")
 
         return theta
 

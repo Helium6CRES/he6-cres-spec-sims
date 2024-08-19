@@ -1,6 +1,9 @@
 '''Constants used throughout spec sims'''
 import math
 
+##### Global debug flag #####
+DEBUG = False # currently unused
+
 ##### Math constants #####
 PI = math.pi
 RAD_TO_DEG = 180 / PI

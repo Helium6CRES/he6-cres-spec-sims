@@ -51,11 +51,13 @@ class TrackBuilder:
                     & (tracks_df["segment_num"] == segment - 1)
                     & (tracks_df["band_num"] == 0.0)
                 )
-
+                
+                if not np.any(previous_time_condition):
+                    breakpoint()
                 previous_segment_time_start = tracks_df[previous_time_condition][ "time_start" ].iloc[0]
                 previous_segment_length = tracks_df[previous_time_condition][ "segment_length" ].iloc[0]
 
-                file_num = tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)]["file_in_acq"][0]
+                file_num = tracks_df[(tracks_df["event_num"] == event) & (tracks_df["segment_num"] == 0.0)]["file_in_acq"].item()
 
                 for index, row in tracks_df[fill_condition].iterrows():
                     # updating some pandas behavior that will be deprecated in pandas 3.0

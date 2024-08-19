@@ -191,7 +191,6 @@ class SegmentBuilder:
         # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
 
         energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
-        # breakpoint()
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
             energy_stop[energy_stop < 0]  = 1e-10

@@ -61,6 +61,7 @@ class EventBuilder:
                 break
 
             else:
+                print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
                 trapped_event_df = pd.concat([trapped_event_df, single_segment_df], ignore_index=True)
 
             event_num += 1
@@ -69,8 +70,8 @@ class EventBuilder:
     def construct_untrapped_segment_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
         """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
         """
-        if np.any(np.isnan(beta_energy)):
-            breakpoint()
+        # if np.any(np.isnan(beta_energy)):
+        #    breakpoint()
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]

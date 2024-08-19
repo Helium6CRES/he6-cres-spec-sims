@@ -15,7 +15,9 @@ class TrapFieldProfile:
         self.inverted = trap_current*main_field < 0
         self.main_field = main_field
 
-        test_asym = True
+        # there is probably a more elegant way to do this
+        test_asym = False 
+        
         if test_asym:
             self.field_strength = self.test_trap_asym
             self.trap_width = (-0.055,0.055)
@@ -25,9 +27,7 @@ class TrapFieldProfile:
 
         self.trap_center = self.initialize_trap_center_interp()
 
-            
         # min and max fields of trap with rho dependence
-        # TODO: find out if/how much trap_center depends on rho
         self.Bmin = lambda rho = 0: self.field_strength(rho, self.trap_center(rho)) 
         self.Bmax = lambda rho = 0: self.field_strength(rho,self.trap_width[1]) 
 
@@ -71,41 +71,41 @@ class TrapFieldProfile:
     def initialize_trap_center_interp(self):
         """Returns function f(rho) which returns the trap center as a function of rho"""
         waveguide_radius = 0.578e-2 # (m)
-        grid_edge_length = 4e-4 # (m)
-        rho_array = np.arange(0, waveguide_radius, grid_edge_length)
+        grid_points = 20 # (m)
+        rho_array = np.linspace(0, waveguide_radius, grid_points)
         trap_center_array = np.zeros(np.size(rho_array))
         
-        # too lazy to vectorize since this shouldn't be called that often
         for i in range(len(rho_array)):
             trap_center_array[i] = self.find_trap_center(rho_array[i]) 
         
-        
-        # TODO: catch why it's sometimes calling rho>waveguide radius and returning NaN
-        # for now set extrapolate=False
+        # is extrapolate ever useful? 
         trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=False)
         
         return trap_center_interp 
 
     def find_trap_center(self, rho = 0):
-        """finds the z-position of the center of an inverted trap"""
+        """finds the z-position of the center of an inverted trap by minimizing"""
 
         if not self.inverted:
             return 0.
 
         waveguide_radius = 0.578e-2 # (m)
-        if rho > waveguide_radius:
-            print(f"rho = {rho}")
-            raise ValueError("rho exceeds the waveguide radius!")
+
         func = lambda z: self.field_strength(rho, z)
-        z_side_coil = 4.3e-2
-        z_center = fmin(func, z_side_coil, xtol=1e-12)[0] # disp=False to suppress output
-        print(f"Trap center at rho={rho}: {z_center}")
+        z_side_coil = 4.3e-2 # hardcoded for now
+        z_center = fmin(func, z_side_coil, xtol=1e-12, disp=False)[0]
+        # print(f"Trap center at rho={rho}: {z_center}")
         return z_center
 
     def trap_width_calc(self):
         """
         Calculates the trap width of the object trap_profile at rho = 0.
-        Is it useful to add optional rho dependence?
+        """
+
+        """ 
+        TODO: rework this function to work more generally. My idea 
+        is to have it search left and right from trap_center up to +/- 
+        trap_zmax, not totally sure how to do that 
         """
 
         func = lambda z: -1 * self.field_strength(0, z)
@@ -126,12 +126,11 @@ class TrapFieldProfile:
     def test_trap_asym(self, rho, z):
         """
         Returns field strength for ideal asymmetrical harmonic trap
-        currently unused
         """
         
-        a = 0.2
-        b = 0.1
-        test_center = 0.01
+        a = 10
+        b = 10
+        test_center = 0.0
         
-        return ((z  > test_center) * (a*(z-test_center)**2 + self.main_field) + 
-                (z <= test_center) * (b*(z-test_center)**2 + self.main_field) - 1e-4)
+        return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
+                (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)
