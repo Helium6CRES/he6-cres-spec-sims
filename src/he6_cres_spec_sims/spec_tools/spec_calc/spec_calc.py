@@ -66,7 +66,7 @@ def freq_to_energy(frequency, field):
     frequency in Hz, magnetic field in Tesla, and pitch angle
     at 90 degrees.
     """
-
+    
     gamma = Q * field / (2 * PI * frequency * M)
     if np.any(gamma < 1):
         gamma = 1
@@ -109,13 +109,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
         Bmin = trap_profile.Bmin(rho) 
         Bcurr = trap_profile.field_strength(rho, zpos)
 
-        # TODO: resolve why this sometimes returns nan
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
-
-        # debugging
-        # if np.any(np.isnan(theta_center_calc)):
-        #     print(f"rho = {rho}, z = {zpos}\nBmin = {Bmin}, Bcurr = {Bcurr}")
-        #     print("theta_center_calc returned NaN")
 
         return theta_center_calc
 
@@ -133,12 +127,6 @@ def cyc_radius(energy, field, pitch_angle):
     vel_perp = velocity(energy) * np.sin(pitch_angle / RAD_TO_DEG)
 
     cyc_radius = (gamma(energy) * M * vel_perp) / (Q * field)
-
-    # debugging
-    # if np.any(np.isnan(cyc_radius)):
-    #     print(f"\nArguments: energy = {energy}, field = {field}, pitch_angle = {pitch_angle}")
-    #     print(f"vel_perp = {vel_perp}, cyc_radius = {cyc_radius}")
-    #     # breakpoint()
 
     return cyc_radius
 
@@ -207,19 +195,14 @@ def min_theta(rho, zpos, trap_profile):
     """
     if trap_profile.is_trap:
         # Be careful here. Technically the Bmax doesn't occur at a constant z.
-        # TODO: review math for asym. trap: can have Bz>Bmax near z=0 as defined here
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
         
         if Bz>Bmax:
-            print("aaaaa (min_theta)")
+            # avoid arcsin error, will be handled by trap_condition anyways
             return False
-        theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
 
-        # debugging
-        # if np.isnan(theta):
-        #     print(f"rho = {rho}, z = {zpos}\nBmax = {Bmax}, Bz = {Bz}")
-        #     raise ValueError("min_theta returned NaN, probably Bz > Bmax")
+        theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
 
         return theta
 
@@ -294,7 +277,7 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
             print("WARNING: Electron not trapped (min_zpos)")
             return False
 
-        elif max_z is not None: # and not trap_profile.inverted: 
+        elif max_z is not None or not trap_profile.inverted: 
             min_z = 2*trap_profile.trap_center(rho) - max_z
             return min_z
 
@@ -443,11 +426,11 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
 
         if trap_profile.inverted:
             # if asymmetrical, also integrate from zc to zmin
-            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) # not implemented
+            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) 
             zmin_arr = np.atleast_1d(np.array(zmin))
             zmin_arr = zmin_arr[np.newaxis,:]
 
-            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr) # check sign of 1-u^2 !!!!
+            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr) 
 
             T_a2 = 4. * (zc - zmin) / velocity(energy) * semiopen_simpson(integrand2) * du
       
