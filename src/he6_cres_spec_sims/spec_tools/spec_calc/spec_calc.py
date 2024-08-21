@@ -756,3 +756,29 @@ def power_larmor_e(field, energy):
     )
 
     return power_larmor
+
+def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints = 200):
+    ''' Performs fast axial integration of f(z) over one period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson.
+    Calculates 2\int_{zmin}^{zmax} f(z) dz
+    f: f(z) without change of variables
+    zmax, zmin, zc: format as array before passing
+    '''
+
+    u = np.linspace(0,1., nIntegralPoints)
+    du = u[1]
+    u[0] = u[1]
+    u = u[:,np.newaxis]
+
+    z_arg1 = zmax*(1. - u**2) + zc*u**2
+    integrand1 = (zmax-zc)*4*u*f(z_arg1)
+    result1 = semiopen_simpson(integrand1) * du
+
+    if inverted:
+        z_arg2 = zmin*(1. - u**2) + zc*u**2
+        integrand2 = (zc-zmin)*4*u*f(z_arg2)
+        result2 = semiopen_simpson(integrand2) * du
+    else: 
+        result2 = result1
+
+    return (result1 + result2)
+
