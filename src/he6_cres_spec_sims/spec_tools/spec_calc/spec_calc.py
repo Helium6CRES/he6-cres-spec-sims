@@ -402,42 +402,24 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bturn_arr = np.atleast_1d(np.array(Bturn))
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bturn_arr = Bturn_arr[np.newaxis,:]
-
-        u = np.linspace(0,1., nIntegralPoints)
-        du = u[1]
-        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
-        u[0] = u[1]
-
-        u = u[:,np.newaxis]
-
+        
         zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
 
-        # See write-ups XXX for more information on this integral
-        # integrate from trap center to zmax (1/4 period)
-        integrand1 = u / np.sqrt(1. - B(zmax_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr)
-        T_a1 = 4. * (zmax - zc) / velocity(energy) * semiopen_simpson(integrand1) * du
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) 
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
 
-        if trap_profile.inverted:
-            # if asymmetrical, also integrate from zc to zmin
-            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) 
-            zmin_arr = np.atleast_1d(np.array(zmin))
-            zmin_arr = zmin_arr[np.newaxis,:]
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
-            integrand2 = u / np.sqrt(1. - B(zmin_arr*(1. - u**2) + zc_arr*u**2)/Bturn_arr) 
-
-            T_a2 = 4. * (zc - zmin) / velocity(energy) * semiopen_simpson(integrand2) * du
-      
-        else: 
-            T_a2 = T_a1
+        f = lambda z: 1. / velocity(energy) / np.sqrt(1. - B(z)/Bturn_arr)
         
-        T_a = T_a1 + T_a2
+        T_a = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
+        
         axial_frequency = 1. / T_a
 
         return axial_frequency
@@ -488,42 +470,23 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        # Should optionally pass these in as argument to reuse calculations!
-
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bturn_arr = np.atleast_1d(np.array(Bturn))
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bturn_arr = Bturn_arr[np.newaxis,:]
 
-        u = np.linspace(0,1., nIntegralPoints)
-        du = u[1]
-        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
-        u[0] = u[1]
-
-        u = u[:,np.newaxis]
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
 
         zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
         
-        integrand1 = u * Bpp(zmax_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmax_arr*(1. - u**2) + zc_arr*u**2) / Bturn_arr)
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
-        b_avg1 = 4. * ax_freq / velocity(energy) * (zmax - zc) * semiopen_simpson(integrand1) * du
+        f = lambda z: ax_freq / velocity(energy) * Bpp(z) / np.sqrt(1. - Bp(z)/Bturn_arr)
 
-        if trap_profile.inverted:
-            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
-            zmin_arr = np.atleast_1d(np.array(zmin))
-            zmin_arr = zmin_arr[np.newaxis,:]
-
-            integrand2 = u * Bpp(zmin_arr*(1. - u**2) + zc_arr*u**2) / np.sqrt(1. - Bp(zmin_arr*(1. - u**2) + zc_arr*u**2) / Bturn_arr)
-
-            b_avg2 = 4. * ax_freq / velocity(energy) * (zc - zmin) * semiopen_simpson(integrand2) * du
- 
-        else:
-            # See write-ups XXX for more information on this integral
-            b_avg2 = b_avg1
-
-        b_avg = b_avg1 + b_avg2
+        b_avg = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints) 
         
         return b_avg
 
@@ -558,44 +521,27 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
 
         # Should optionally pass zmax, etc. in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        zc = trap_profile.trap_center(rho)
-
         zmax_arr = np.atleast_1d(np.array(zmax))
-        zc_arr = np.atleast_1d(np.array(zc))
-        Bturn_arr = np.atleast_1d(np.array(Bturn))
         zmax_arr = zmax_arr[np.newaxis,:]
+
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
+
+        zc = trap_profile.trap_center(rho)
+        zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
+
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
         Bturn_arr = Bturn_arr[np.newaxis,:]
 
-        # See write-ups XXX for more information on this integral
-        u = np.linspace(0,1., nIntegralPoints)
-        du = u[1]
-        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
-        u[0] = u[1]
-
-        u = u[:,np.newaxis]
-
-        z_arg1 = zmax_arr *(1.-u**2) + zc_arr*u**2
-        integrand1 = u * (2 - B(z_arg1) / Bturn_arr) * dBdRho(z_arg1)  / (np.sqrt(1. - B(z_arg1) / Bturn_arr) * B(z_arg1)**2)
-
         ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
-        grad_B_frequency1 = 2 * (zmax - zc) / PI * (energy * ax_freq) / (rho * velocity(energy)) * semiopen_simpson(integrand1) * du
+        f = lambda z: ( energy * ax_freq / (PI * rho * velocity(energy)) *
+            (2 - B(z) / Bturn_arr) * dBdRho(z) / np.sqrt(1. - B(z) / Bturn_arr) / B(z)**2 )
 
-        if trap_profile.inverted:
-            # should optionally pass this too to reuse calculations
-            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
-            zmin_arr = np.atleast_1d(np.array(zmin))
-            zmin_arr = zmin_arr[np.newaxis,:]
-            
-            z_arg2 = zmin_arr*(1.-u**2) + zc_arr*u**2
-            integrand2 = u * (2 - B(z_arg2) / Bturn_arr) * dBdRho(z_arg2)  / (np.sqrt(1. - B(z_arg2) / Bturn_arr) * B(z_arg2)**2)
-            grad_B_frequency2 = 2 * (zc - zmin) / PI * (energy * ax_freq) / (rho * velocity(energy)) * semiopen_simpson(integrand2) * du
+        grad_B_frequency = fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
 
-        else:
-            grad_B_frequency2 = grad_B_frequency1
-
-        #We don't really care which direction it goes: just want to report a frequency
-        grad_B_frequency = np.abs(grad_B_frequency1 + grad_B_frequency2)
+        grad_B_frequency = np.abs(grad_B_frequency)
 
         return grad_B_frequency
 
@@ -758,10 +704,12 @@ def power_larmor_e(field, energy):
     return power_larmor
 
 def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints = 200):
-    ''' Performs fast axial integration of f(z) over one period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson.
-    Calculates 2\int_{zmin}^{zmax} f(z) dz
+    ''' Performs fast axial integration of f(z) over one half period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson.
+    Calculates \int_{zmin}^{zmax} f(z) dz
     f: f(z) without change of variables
     zmax, zmin, zc: format as array before passing
+    
+    Remember to double result for full period!
     '''
 
     u = np.linspace(0,1., nIntegralPoints)
@@ -770,12 +718,12 @@ def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints =
     u = u[:,np.newaxis]
 
     z_arg1 = zmax*(1. - u**2) + zc*u**2
-    integrand1 = (zmax-zc)*4*u*f(z_arg1)
+    integrand1 = (zmax-zc)*2*u*f(z_arg1)
     result1 = semiopen_simpson(integrand1) * du
 
     if inverted:
         z_arg2 = zmin*(1. - u**2) + zc*u**2
-        integrand2 = (zc-zmin)*4*u*f(z_arg2)
+        integrand2 = (zc-zmin)*2*u*f(z_arg2)
         result2 = semiopen_simpson(integrand2) * du
     else: 
         result2 = result1
