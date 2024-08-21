@@ -539,7 +539,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         f = lambda z: ( energy * ax_freq / (PI * rho * velocity(energy)) *
             (2 - B(z) / Bturn_arr) * dBdRho(z) / np.sqrt(1. - B(z) / Bturn_arr) / B(z)**2 )
 
-        grad_B_frequency = fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
+        grad_B_frequency = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
 
         grad_B_frequency = np.abs(grad_B_frequency)
 

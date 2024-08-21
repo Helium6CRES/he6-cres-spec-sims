@@ -118,8 +118,9 @@ class Experiment:
         seeds = experiment_params["rand_seeds"]
         fields = experiment_params["fields_T"]
         traps = experiment_params["traps_A"]
-        low = experiment_params["low"]
-        high = experiment_params["high"]
+        if "low" in experiment_params and "high" in experiment_params:
+            low = experiment_params["low"]
+            high = experiment_params["high"]
 
         for i, (seed, field, trap) in enumerate(zip(seeds, fields, traps)):
 
@@ -146,8 +147,9 @@ class Experiment:
             #config_dict["Physics"]["energy"]["isotope"] = str(isotope)
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
-            config_dict["Physics"]["z"]["low"] = float(low)
-            config_dict["Physics"]["z"]["high"] = float(high)
+            if "low" in experiment_params and "high" in experiment_params:
+                config_dict["Physics"]["z"]["low"] = float(low)
+                config_dict["Physics"]["z"]["high"] = float(high)
 
             with open(config_path, "w") as f:
                 yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
