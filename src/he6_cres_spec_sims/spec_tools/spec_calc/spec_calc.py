@@ -221,7 +221,7 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
     if trap_profile.is_trap:
 
         if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
-            print("WARNING: Electron not trapped (max_zpos)")
+            # print("WARNING: Electron not trapped (max_zpos)")
             return False
 
         else:
@@ -230,7 +230,7 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
             
             if np.any(rho_p > 0.578e-2):
-                print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
+                print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
             min_field = trap_profile.Bmin(rho_p) 
             max_field = trap_profile.Bmax(rho_p) 
@@ -277,7 +277,7 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
             print("WARNING: Electron not trapped (min_zpos)")
             return False
 
-        elif max_z is not None or not trap_profile.inverted: 
+        elif not trap_profile.inverted and max_z is not None:
             min_z = 2*trap_profile.trap_center(rho) - max_z
             return min_z
 
@@ -286,7 +286,7 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
             c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
             if rho_p > 0.578e-2:
-                print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
+                print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
             min_field = trap_profile.Bmin(rho_p) 
             max_field = trap_profile.Bmax(rho_p)
@@ -388,7 +388,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         # debugging
 
         if np.any(rho_p > 0.578e-2):
-            print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
+            print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)
@@ -469,11 +469,11 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
         if np.any(rho_p > 0.578e-2):
-            print(f"#####\nrho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur \n #####")
+            print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
         
         rho_pp = np.sqrt(rho**2 + c_r**2)
         if np.any(rho_pp > 0.578e-2):
-            print(f"#####\nrho_pp = {rho_pp} exceeds the waveguide radius, odd behavior may occur \n #####")
+            print(f"rho_pp = {rho_pp} exceeds the waveguide radius, odd behavior may occur")
 
         # Field at center of trap
         B0 = trap_profile.Bmin(rho_p)

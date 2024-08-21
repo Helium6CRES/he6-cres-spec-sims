@@ -16,7 +16,7 @@ class TrapFieldProfile:
         self.main_field = main_field
 
         # there is probably a more elegant way to do this
-        test_asym = False 
+        test_asym = False
         
         if test_asym:
             self.field_strength = self.test_trap_asym
@@ -129,8 +129,8 @@ class TrapFieldProfile:
         """
         
         a = 10
-        b = 10
-        test_center = 0.0
+        b = 6
+        test_center = 2.5e-2 
         
         return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
                 (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)

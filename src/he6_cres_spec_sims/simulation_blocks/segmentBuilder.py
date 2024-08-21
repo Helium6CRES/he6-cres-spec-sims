@@ -81,7 +81,7 @@ class SegmentBuilder:
                 # If the event is not trapped or the max number of jumps has been reached,
                 # we do not want to write the df to the scattered_segments_list.
                 if not is_trapped:
-                    print("Event no longer trapped.")
+                    # print("Event no longer trapped.")
                     break
 
                 scattered_segment_df["segment_num"] = jump_num
@@ -165,7 +165,7 @@ class SegmentBuilder:
         trap_center = trap_profile.trap_center(df["rho_center"])
 
         zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
-        zmin = sc.min_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        zmin = sc.min_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile, max_z = zmax)
 
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
