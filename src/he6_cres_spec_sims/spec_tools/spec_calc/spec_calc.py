@@ -544,20 +544,28 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         #rho_p = np.sqrt(rho**2 + c_r**2 / 2)
 
         if ax_freq is None:
-            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile)
+            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
         # Field at center of trap
-        B0 = trap_profile.field_strength(rho, 0)
+        B0 = trap_profile.Bmin(rho)
         # Field at turning point
-        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
 
         B = lambda z: trap_profile.field_strength(rho, z)
 
         rho_delta = 1e-7
         dBdRho = lambda z: (trap_profile.field_strength(rho + rho_delta, z) - trap_profile.field_strength(rho - rho_delta, z)) / (2. * rho_delta)
 
-        # Should optionally pass these in as argument to reuse calculations!
+        # Should optionally pass zmax, etc. in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zc = trap_profile.trap_center(rho)
+
+        zmax_arr = np.atleast_1d(np.array(zmax))
+        zc_arr = np.atleast_1d(np.array(zc))
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        zmax_arr = zmax_arr[np.newaxis,:]
+        zc_arr = zc_arr[np.newaxis,:]
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
         # See write-ups XXX for more information on this integral
         u = np.linspace(0,1., nIntegralPoints)
@@ -565,28 +573,35 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
         u[0] = u[1]
 
-        zmax_arr = np.atleast_1d(np.array(zmax))
-        Bmax_arr = np.atleast_1d(np.array(Bmax))
-
         u = u[:,np.newaxis]
-        zmax_arr = zmax_arr[np.newaxis,:]
-        Bmax_arr = Bmax_arr[np.newaxis,:]
 
-        z_arg = zmax_arr *(1.-u**2)
-        integrand = u * (2 - B(z_arg) / Bmax_arr) * dBdRho(z_arg)  / (np.sqrt(1. - B(z_arg) / Bmax_arr) * B(z_arg)**2)
+        z_arg1 = zmax_arr *(1.-u**2) + zc_arr*u**2
+        integrand1 = u * (2 - B(z_arg1) / Bturn_arr) * dBdRho(z_arg1)  / (np.sqrt(1. - B(z_arg1) / Bturn_arr) * B(z_arg1)**2)
 
         ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
-        grad_B_frequency = 4 / PI * (energy * zmax * ax_freq) / (rho  * velocity(energy)) * semiopen_simpson(integrand) * du
+        grad_B_frequency1 = 2 * (zmax - zc) / PI * (energy * ax_freq) / (rho * velocity(energy)) * semiopen_simpson(integrand1) * du
+
+        if trap_profile.inverted:
+            # should optionally pass this too to reuse calculations
+            zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
+            zmin_arr = np.atleast_1d(np.array(zmin))
+            zmin_arr = zmin_arr[np.newaxis,:]
+            
+            z_arg2 = zmin_arr*(1.-u**2) + zc_arr*u**2
+            integrand2 = u * (2 - B(z_arg2) / Bturn_arr) * dBdRho(z_arg2)  / (np.sqrt(1. - B(z_arg2) / Bturn_arr) * B(z_arg2)**2)
+            grad_B_frequency2 = 2 * (zc - zmin) / PI * (energy * ax_freq) / (rho * velocity(energy)) * semiopen_simpson(integrand2) * du
+
+        else:
+            grad_B_frequency2 = grad_B_frequency1
 
         #We don't really care which direction it goes: just want to report a frequency
-        grad_B_frequency = np.abs(grad_B_frequency)
+        grad_B_frequency = np.abs(grad_B_frequency1 + grad_B_frequency2)
 
         return grad_B_frequency
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
         return False
-
 
 
 def waveguide_beta(omega):
