@@ -16,6 +16,9 @@ Frequency: Hz
 Power    : W
 ---
 """
+
+# TODO at some point: fix inconsistent notation eg Bmin/min_field Bmax/max_field Bmax_reached/b_turn
+
 import numpy as np
 
 import scipy.integrate as integrate
@@ -63,7 +66,7 @@ def freq_to_energy(frequency, field):
     frequency in Hz, magnetic field in Tesla, and pitch angle
     at 90 degrees.
     """
-
+    
     gamma = Q * field / (2 * PI * frequency * M)
     if np.any(gamma < 1):
         gamma = 1
@@ -103,7 +106,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
 
     if trap_profile.is_trap:
 
-        Bmin = trap_profile.field_strength(rho, 0.0)
+        Bmin = trap_profile.Bmin(rho) 
         Bcurr = trap_profile.field_strength(rho, zpos)
 
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
@@ -136,7 +139,7 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-        min_field = trap_profile.field_strength(rho, 0)
+        min_field = trap_profile.Bmin(rho) 
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -165,7 +168,7 @@ def min_radius(energy, center_pitch_angle, rho, trap_profile):
 
     if trap_profile.is_trap:
 
-        min_field = trap_profile.field_strength(rho, 0)
+        min_field = trap_profile.Bmin(rho) 
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -194,14 +197,18 @@ def min_theta(rho, zpos, trap_profile):
         # Be careful here. Technically the Bmax doesn't occur at a constant z.
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
+        
+        if Bz>Bmax:
+            # avoid arcsin error, will be handled by trap_condition anyways
+            return False
 
-        theta = np.arcsin((Bz / Bmax) ** 0.5) * RAD_TO_DEG
+        theta = np.arcsin(np.sqrt(Bz / Bmax)) * RAD_TO_DEG
+
         return theta
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
         return False
-
 
 @np.vectorize
 def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
@@ -213,24 +220,29 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
 
     if trap_profile.is_trap:
 
-        if center_pitch_angle < min_theta(rho, 0, trap_profile):
-            print("WARNING: Electron not trapped (zpos)")
+        if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
+            # print("WARNING: Electron not trapped (max_zpos)")
             return False
 
         else:
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
-            c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+            c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+            
+            if np.any(rho_p > 0.578e-2):
+                print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
-            min_field = trap_profile.field_strength(rho_p, 0)
-            max_field = trap_profile.field_strength(rho_p, trap_profile.trap_width[1])
+            min_field = trap_profile.Bmin(rho_p) 
+            max_field = trap_profile.Bmax(rho_p) 
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
+            if max_reached_field > max_field:
+                print("WARNING: Electron not trapped (max_zpos)")
 
             func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
 
             # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
-            solution = root_scalar(func, bracket=[0, trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
+            solution = root_scalar(func, bracket=[trap_profile.trap_center(rho), trap_profile.trap_width[1]], method='brentq', xtol=1e-14)
             max_z = solution.root
             curr_field = trap_profile.field_strength(rho_p, max_z)
 
@@ -245,6 +257,60 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
                 print("Error Rate: ", max_z - trap_profile.trap_width[1])
 
             return max_z
+
+    else:
+        print("ERROR: Given trap profile is not a valid trap")
+        return False
+
+@np.vectorize
+def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z = None):
+
+    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle and rho.
+       One would ideally prefer minimization which was not looped (with np.vectorize)
+       In practice, library multi-dimensional minimizers are slower, even if Jacobian is diagonal
+    """
+    
+
+    if trap_profile.is_trap:
+
+        if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
+            print("WARNING: Electron not trapped (min_zpos)")
+            return False
+
+        elif not trap_profile.inverted and max_z is not None:
+            min_z = 2*trap_profile.trap_center(rho) - max_z
+            return min_z
+
+        else:
+            # Ok, so does this mean we now have an energy dependence on zmax? Yes.
+            c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
+            rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+            if rho_p > 0.578e-2:
+                print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
+
+            min_field = trap_profile.Bmin(rho_p) 
+            max_field = trap_profile.Bmax(rho_p)
+
+            max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
+
+            func = lambda z: trap_profile.field_strength(rho_p, z) - max_reached_field
+
+            # root-finding generally easier than minimization (trivial to step z +- dz by sign of func(z))
+            solution = root_scalar(func, bracket=[trap_profile.trap_width[0], trap_profile.trap_center(rho)], method='brentq', xtol=1e-14)
+            min_z = solution.root
+            curr_field = trap_profile.field_strength(rho_p, min_z)
+
+            if debug and (curr_field > max_reached_field):
+                print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
+                print("Bmin reached: ", curr_field)
+
+            if debug == True:
+                print("zmin calculated: ", min_z)
+
+            if min_z < trap_profile.trap_width[0]:
+                print("Error Rate: ", trap_profile.trap_width[0] - min_z)
+
+            return min_z
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
@@ -285,9 +351,9 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
 
     if trap_profile.is_trap:
 
-        min_field = trap_profile.field_strength(rho, 0)
+        min_field = trap_profile.Bmin(rho)
         max_z = max_zpos(center_pitch_angle, rho, trap_profile)
-        max_reached_field = trap_profile.field_strength(rho, max_z)
+        max_reached_field = trap_profile.field_strength(rho, maz_z)
 
         if np.any(abs(zpos) > max_z):
             print("Electron does not reach given zpos")
@@ -310,42 +376,50 @@ def semiopen_simpson(v):
 
 def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
+    
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
         # Sets allowed range, "clipping" the pitches at 90 deg.
         center_pitch_angle = np.clip(center_pitch_angle, 0, 89.9999)
 
         # Get cyclotron-radius modified "effective" guiding center rho
-        c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+        c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+        # debugging
+
+        if np.any(rho_p > 0.578e-2):
+            print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
         # Field at center of trap
-        B0 = trap_profile.field_strength(rho_p, 0)
+        B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
-        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bturn > trap_profile.Bmax(rho_p)):
+            print("WARNING: Electron not trapped (axial_freq)")
+            return False
 
         B = lambda z: trap_profile.field_strength(rho_p, z)
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-
-        # See write-ups XXX for more information on this integral
-        u = np.linspace(0,1., nIntegralPoints)
-        du = u[1]
-        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
-        u[0] = u[1]
-
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bmax_arr = np.atleast_1d(np.array(Bmax))
-
-        u = u[:,np.newaxis]
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bmax_arr = Bmax_arr[np.newaxis,:]
+        
+        zc = trap_profile.trap_center(rho)
+        zc_arr = np.atleast_1d(np.array(zc))
+        zc_arr = zc_arr[np.newaxis,:]
 
-        integrand = u / np.sqrt(1. - B(zmax_arr *(1.-u**2)) / Bmax_arr)
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) 
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
 
-        T_a = 8. * zmax / velocity(energy) * semiopen_simpson(integrand) * du
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
+        f = lambda z: 1. / velocity(energy) / np.sqrt(1. - B(z)/Bturn_arr)
+        
+        T_a = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
+        
         axial_frequency = 1. / T_a
 
         return axial_frequency
@@ -371,48 +445,110 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
 
         # we should not be redoing integrals which are the bottleneck of the Monte Carlo, by default
         if ax_freq is None:
-            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile)
+            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
-        c_r = cyc_radius(energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+        c_r = cyc_radius(energy, trap_profile.Bmin(rho), center_pitch_angle)
 
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+        if np.any(rho_p > 0.578e-2):
+            print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
+        
         rho_pp = np.sqrt(rho**2 + c_r**2)
+        if np.any(rho_pp > 0.578e-2):
+            print(f"rho_pp = {rho_pp} exceeds the waveguide radius, odd behavior may occur")
 
         # Field at center of trap
-        B0 = trap_profile.field_strength(rho_p, 0)
+        B0 = trap_profile.Bmin(rho_p)
         # Field at turning point
-        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+        if np.any(Bturn > trap_profile.Bmax(rho_p)):
+            print("WARNING: Electron not trapped (b_avg)")
+            return False
         # Field in between (vs. instantaneous pitch angle)
         Bp = lambda z: trap_profile.field_strength(rho_p, z)
         Bpp = lambda z: trap_profile.field_strength(rho_pp, z)
 
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
-        # Should optionally pass these in as argument to reuse calculations!
-        f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
-
-        # See write-ups XXX for more information on this integral
-        u = np.linspace(0,1., nIntegralPoints)
-        du = u[1]
-        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
-        u[0] = u[1]
-
         zmax_arr = np.atleast_1d(np.array(zmax))
-        Bmax_arr = np.atleast_1d(np.array(Bmax))
-
-        u = u[:,np.newaxis]
         zmax_arr = zmax_arr[np.newaxis,:]
-        Bmax_arr = Bmax_arr[np.newaxis,:]
 
-        integrand = u * Bpp(zmax_arr*(1-u**2)) / np.sqrt(1. - Bp(zmax_arr*(1.-u**2)) / Bmax_arr)
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
 
-        b_avg = 8. * zmax * f_a / velocity(energy) * semiopen_simpson(integrand) * du
+        zc = trap_profile.trap_center(rho)
+        zc_arr = np.atleast_1d(np.array(zc))
+        zc_arr = zc_arr[np.newaxis,:]
+        
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        Bturn_arr = Bturn_arr[np.newaxis,:]
 
+        f = lambda z: ax_freq / velocity(energy) * Bpp(z) / np.sqrt(1. - Bp(z)/Bturn_arr)
+
+        b_avg = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints) 
+        
         return b_avg
 
     else:
         print("ERROR: Given trap profile is not a valid trap")
         return False
+
+
+def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=200):
+    """Calculates the axial frequency of trapped electrons."""
+    if trap_profile.is_trap:
+        # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
+        # Sets allowed range, "clipping" the pitches at 90 deg.
+        center_pitch_angle = np.clip(center_pitch_angle, 0, 89.9999)
+
+        # Get cyclotron-radius modified "effective" guiding center rho
+        #c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+        #rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+
+        if ax_freq is None:
+            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
+
+        # Field at center of trap
+        B0 = trap_profile.Bmin(rho)
+        # Field at turning point
+        Bturn = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+
+        B = lambda z: trap_profile.field_strength(rho, z)
+
+        rho_delta = 1e-7
+        dBdRho = lambda z: (trap_profile.field_strength(rho + rho_delta, z) - trap_profile.field_strength(rho - rho_delta, z)) / (2. * rho_delta)
+
+        # Should optionally pass zmax, etc. in as argument to reuse calculations!
+        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmax_arr = np.atleast_1d(np.array(zmax))
+        zmax_arr = zmax_arr[np.newaxis,:]
+
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
+        zmin_arr = np.atleast_1d(np.array(zmin))
+        zmin_arr = zmin_arr[np.newaxis,:]
+
+        zc = trap_profile.trap_center(rho)
+        zc_arr = np.atleast_1d(np.array(zc))
+        zc_arr = zc_arr[np.newaxis,:]
+
+        Bturn_arr = np.atleast_1d(np.array(Bturn))
+        Bturn_arr = Bturn_arr[np.newaxis,:]
+
+        ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
+        f = lambda z: ( energy * ax_freq / (PI * rho * velocity(energy)) *
+            (2 - B(z) / Bturn_arr) * dBdRho(z) / np.sqrt(1. - B(z) / Bturn_arr) / B(z)**2 )
+
+        grad_B_frequency = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
+
+        grad_B_frequency = np.abs(grad_B_frequency)
+
+        return grad_B_frequency
+
+    else:
+        print("ERROR: Given trap profile is not a valid trap")
+        return False
+
 
 def waveguide_beta(omega):
     """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode
@@ -479,7 +615,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
 
     p0 = M * velocity(energy)
     ### Note: This is the non-relativistic magnetic moment. One gets the same ODE if M -> gamma M in the lambda ode.
-    Bmin = trap_profile.field_strength(rho, 0)
+    Bmin = trap_profile.Bmin(rho)
     mu = p0**2 * np.sin(center_pitch_angle / RAD_TO_DEG )**2 / (2. * M * Bmin)
     Bz = lambda z: trap_profile.field_strength(rho,z)
     dBdz = lambda z: derivative(Bz, z, dx=1e-6)
@@ -566,3 +702,31 @@ def power_larmor_e(field, energy):
     )
 
     return power_larmor
+
+def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints = 200):
+    ''' Performs fast axial integration of f(z) over one half period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson.
+    Calculates \int_{zmin}^{zmax} f(z) dz
+    f: f(z) without change of variables
+    zmax, zmin, zc: format as array before passing
+    
+    Remember to double result for full period!
+    '''
+
+    u = np.linspace(0,1., nIntegralPoints)
+    du = u[1]
+    u[0] = u[1]
+    u = u[:,np.newaxis]
+
+    z_arg1 = zmax*(1. - u**2) + zc*u**2
+    integrand1 = (zmax-zc)*2*u*f(z_arg1)
+    result1 = semiopen_simpson(integrand1) * du
+
+    if inverted:
+        z_arg2 = zmin*(1. - u**2) + zc*u**2
+        integrand2 = (zc-zmin)*2*u*f(z_arg2)
+        result2 = semiopen_simpson(integrand2) * du
+    else: 
+        result2 = result1
+
+    return (result1 + result2)
+

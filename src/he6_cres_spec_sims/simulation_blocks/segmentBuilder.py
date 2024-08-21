@@ -81,7 +81,7 @@ class SegmentBuilder:
                 # If the event is not trapped or the max number of jumps has been reached,
                 # we do not want to write the df to the scattered_segments_list.
                 if not is_trapped:
-                    print("Event no longer trapped.")
+                    # print("Event no longer trapped.")
                     break
 
                 scattered_segment_df["segment_num"] = jump_num
@@ -158,12 +158,22 @@ class SegmentBuilder:
         main_field = self.config.eventbuilder.main_field
         decay_cell_radius = self.config.eventbuilder.decay_cell_radius
 
+        # print("\n")
+        # print(df)
+        # print("\n")
         # Calculate all relevant segment parameters. Order matters here.
+        trap_center = trap_profile.trap_center(df["rho_center"])
+
+        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        zmin = sc.min_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile, max_z = zmax)
+
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
         b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
+
+        grad_b_freq = sc.grad_b_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
 
@@ -183,7 +193,6 @@ class SegmentBuilder:
         # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
 
         energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
-
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
             energy_stop[energy_stop < 0]  = 1e-10
@@ -198,9 +207,12 @@ class SegmentBuilder:
         df["axial_freq"] = axial_freq
         df["avg_cycl_freq"] = avg_cycl_freq
         df["b_avg"] = b_avg
+        df["grad_b_freq"] = grad_b_freq
         df["freq_stop"] = freq_stop
         df["energy_stop"] = energy_stop
         df["zmax"] = zmax
+        df["zmin"] = zmin
+        df["trap_center"] = trap_center
         df["mod_index"] = mod_index
         df["slope"] = slope
         df["segment_power"] = segment_power

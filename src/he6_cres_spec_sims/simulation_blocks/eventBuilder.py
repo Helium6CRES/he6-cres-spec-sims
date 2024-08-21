@@ -55,12 +55,19 @@ class EventBuilder:
                 is_trapped = self.trap_condition(single_segment_df)
 
             if event_num == 0:
+                # Edge case exists where event 0 can save an untrapped beta
+                # Can usually be resolved by setting a higher betas_to_simulate, unless there's a problem with config causing untrapped betas to generate
+                # TODO: resolve this with better control flow
+                if not is_trapped:
+                    print("Reached betas_to_simulate without generating a trapped beta")
                 trapped_event_df = single_segment_df
 
-            elif beta_num == betas_to_simulate:
+            elif beta_num == betas_to_simulate or not is_trapped:
+                print("Reached betas_to_simulate without generating a trapped beta")
                 break
 
             else:
+                print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
                 trapped_event_df = pd.concat([trapped_event_df, single_segment_df], ignore_index=True)
 
             event_num += 1
@@ -69,6 +76,8 @@ class EventBuilder:
     def construct_untrapped_segment_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
         """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
         """
+        # if np.any(np.isnan(beta_energy)):
+        #    breakpoint()
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]
@@ -77,6 +86,8 @@ class EventBuilder:
         initial_theta = beta_direction[0]
         initial_phi_dir = beta_direction[1]
 
+        # TODO: should initial_field be based on initial_rho_pos or rho_center?
+        # should there be a separate initial_field_center?
         initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
         initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
 
@@ -89,12 +100,26 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
+        # debugging
+        if np.any(np.isnan(rho_center)):
+            print("WARNING: rho_center is nan")
+            # breakpoint()
+        if np.any(rho_center > 5.78e-3):
+            print(f"WARNING: rho_center = {rho_center} exceeds waveguide radius!")
+            # breakpoint()
+
         center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
+
+        # Use B at turning point to determine if trapped
+        b_min = self.config.trap_profile.Bmin(rho_center)
+        b_max = self.config.trap_profile.Bmax(rho_center)
+        b_turn = b_min / pow( math.sin(center_theta / RAD_TO_DEG), 2)
 
         # Use trapped_initial_theta to determine if trapped.
         trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
         max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
         min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
+
 
         segment_properties = {
             "energy": beta_energy,
@@ -120,7 +145,9 @@ class EventBuilder:
             "b_avg": 0.0,
             "freq_stop": 0.0,
             "zmax": 0.0,
+            "zmin": 0.0,
             "axial_freq": 0.0,
+            "grad_b_freq": 0.0,
             "mod_index": 0.0,
             "segment_power": 0.0,
             "slope": 0.0,
@@ -136,6 +163,10 @@ class EventBuilder:
             "energy_accept_low": self.physics.energy_acceptance_low,
             "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
             "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
+            "trap_center": 0.0, # rename to z_center?
+            "b_min": b_min,
+            "b_max": b_max, # not used much, could get rid of this
+            "b_turn": b_turn,
         }
 
         segment_df = pd.DataFrame(segment_properties, index=[event_num])
@@ -149,12 +180,23 @@ class EventBuilder:
 
         if segment_df.shape[0] != 1:
             raise ValueError("trap_condition(): Input segment not a single row.")
-
+       
+        initial_field = segment_df["initial_field"][0]
         initial_theta = segment_df["initial_theta"][0]
         trapped_initial_theta = segment_df["trapped_initial_theta"][0]
         rho_center = segment_df["rho_center"][0]
         max_radius = segment_df["max_radius"][0]
         energy = segment_df["energy"][0]
+        b_turn = segment_df["b_turn"][0]
+        b_max = segment_df["b_max"][0]
+
+        if initial_field > b_max:
+            # print("Not Trapped: beta generated at initial field above main field")
+            return False
+
+        if b_turn > b_max:
+            # print("Not Trapped: Turning point beyond trap limits.")
+            return False
 
         if initial_theta < trapped_initial_theta:
             # print("Not Trapped: Pitch angle too small.")
@@ -163,5 +205,5 @@ class EventBuilder:
         if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
             # print("Not Trapped: Collided with guide wall.")
             return False
-
+        
         return True

@@ -1,11 +1,7 @@
-import csv
-import math
-import os
 import pathlib
-import time
 
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, CubicSpline
 from scipy.optimize import fmin
 
 class TrapFieldProfile:
@@ -16,15 +12,29 @@ class TrapFieldProfile:
         # TODO: Add in trap radius as an attribute?
 
         self.trap_current = trap_current
+        self.inverted = trap_current*main_field < 0
         self.main_field = main_field
 
-        self.field_strength = self.initialize_field_strength_interp()
-        self.trap_width = self.trap_width_calc()
+        # there is probably a more elegant way to do this
+        test_asym = False
+        
+        if test_asym:
+            self.field_strength = self.test_trap_asym
+            self.trap_width = (-0.055,0.055)
+        else:
+            self.field_strength = self.initialize_field_strength_interp()
+            self.trap_width = self.trap_width_calc()
+
+        self.trap_center = self.initialize_trap_center_interp()
+
+        # min and max fields of trap with rho dependence
+        self.Bmin = lambda rho = 0: self.field_strength(rho, self.trap_center(rho)) 
+        self.Bmax = lambda rho = 0: self.field_strength(rho,self.trap_width[1]) 
 
         # TODO: Actually test to be sure it is a trap.
         self.is_trap = True
 
-        self.relative_depth = (main_field - self.field_strength(0, 0)) / main_field
+        # self.relative_depth = (main_field - self.Bmin()) / main_field # unused?
 
     def initialize_field_strength_interp(self):
         """Returns function object f(rho, z) which returns magnetic field (magnitudes?) as a function of position"""
@@ -35,12 +45,12 @@ class TrapFieldProfile:
         grid_edge_length = 4e-4  # (m), it was found that grid_edge_length = 5e-4 results in 1ppm agreement between field_stength and field_strength_interp
 
         rho_array = np.arange(0, waveguide_radius, grid_edge_length)
-        z_array = np.arange(-trap_zmax, trap_zmax, grid_edge_length)
+        z_array = np.arange(-trap_zmax, trap_zmax, grid_edge_length)# + self.trap_center
 
         dir_path = pathlib.Path(__file__).parents[0]
 
-        pkl_path = dir_path / "trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv"
-
+        # pkl_path = dir_path / "trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv"
+        pkl_path = dir_path / "trap_field_profile_pkl/trap_1A.csv"
         try:
             with open(pkl_path, "r") as pkl_file:
                 map_array = np.loadtxt(pkl_file)
@@ -58,17 +68,69 @@ class TrapFieldProfile:
         #return evaluation function for use
         return field_interp.ev
 
+    def initialize_trap_center_interp(self):
+        """Returns function f(rho) which returns the trap center as a function of rho"""
+        waveguide_radius = 0.578e-2 # (m)
+        grid_points = 20 # (m)
+        rho_array = np.linspace(0, waveguide_radius, grid_points)
+        trap_center_array = np.zeros(np.size(rho_array))
+        
+        for i in range(len(rho_array)):
+            trap_center_array[i] = self.find_trap_center(rho_array[i]) 
+        
+        # is extrapolate ever useful? 
+        trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=False)
+        
+        return trap_center_interp 
+
+    def find_trap_center(self, rho = 0):
+        """finds the z-position of the center of an inverted trap by minimizing"""
+
+        if not self.inverted:
+            return 0.
+
+        waveguide_radius = 0.578e-2 # (m)
+
+        func = lambda z: self.field_strength(rho, z)
+        z_side_coil = 4.3e-2 # hardcoded for now
+        z_center = fmin(func, z_side_coil, xtol=1e-12, disp=False)[0]
+        # print(f"Trap center at rho={rho}: {z_center}")
+        return z_center
+
     def trap_width_calc(self):
         """
-        Calculates the trap width of the object trap_profile.
+        Calculates the trap width of the object trap_profile at rho = 0.
         """
 
-        field_func = self.field_strength
-        func = lambda z: -1 * field_func(0, z)
+        """ 
+        TODO: rework this function to work more generally. My idea 
+        is to have it search left and right from trap_center up to +/- 
+        trap_zmax, not totally sure how to do that 
+        """
 
-        maximum = fmin(func, 0, xtol=1e-12)[0]
-        print("Trap width: ({},{})".format(-maximum, maximum))
-        print("Maximum Field: {}".format(-1 * func(maximum)))
+        func = lambda z: -1 * self.field_strength(0, z)
 
-        trap_width = (-maximum, maximum)
+        if self.inverted:
+            trap_zmax = 5.5e-2  # (m)
+            print("Inverted trap width: (0, {})".format(trap_zmax))
+            print("Maximum Field (at z=0): {}".format(-1* func(0)))
+            trap_width = (0,trap_zmax)
+        else:
+            maximum = fmin(func, 0, xtol=1e-12)[0]
+            print("Trap width: ({},{})".format(-maximum, maximum))
+            print("Maximum Field: {}".format(-1 * func(maximum)))
+            trap_width = (-maximum, maximum)
+
         return trap_width
+
+    def test_trap_asym(self, rho, z):
+        """
+        Returns field strength for ideal asymmetrical harmonic trap
+        """
+        
+        a = 10
+        b = 6
+        test_center = 2.5e-2 
+        
+        return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
+                (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)

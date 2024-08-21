@@ -5,7 +5,7 @@ import pathlib
 import time
 
 import numpy as np
-from scipy.interpolate import interp2d
+from scipy.interpolate import RectBivariateSpline # interp2d
 from scipy.misc import derivative
 
 
@@ -206,7 +206,13 @@ class Field_profile:
 
         except IOError:
             print("Didn't find an existing field map.")
+            print("Creating field map...")
+
             start = time.process_time()
+
+            # create coil_classes/field_profile_pkl_files/ if it does not exist
+            pkl_path.parent.mkdir(exist_ok=True,parents=True)
+
             map_array = np.zeros((z_array.shape[0], rho_array.shape[0]))
 
             B = lambda rho, z: self.field_strength(rho, z)
@@ -221,7 +227,7 @@ class Field_profile:
             print("Writing the map_array to csv. \npkl_path: ", pkl_path)
 
         # Now use the map_array to do the interpolation.
-        B_interp2d = interp2d(rho_array, z_array, map_array, kind="cubic")
+        B_interp2d = RectBivariateSpline(z_array, rho_array, map_array)
 
         # Making it vectorized, meaning float or np array can be inputs.
         def B_interp(rho, z):
