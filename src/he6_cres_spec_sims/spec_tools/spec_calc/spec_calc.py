@@ -374,6 +374,31 @@ def semiopen_simpson(v):
     """
     return np.sum(v,axis=0)  - v[1] * 1./12 - v[2] * 5./12 - v[-1] * 7./12 + v[-2]  * 1./12
 
+def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints = 200):
+    ''' Performs fast axial integration of f(z) over one half period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson. Calculates \int_{zmin}^{zmax} f(z) dz. Remember to double result for full period!
+    f: f(z) without change of variables
+    zmax, zmin, zc: format as array before passing
+    
+    '''
+
+    u = np.linspace(0,1., nIntegralPoints)
+    du = u[1]
+    u[0] = u[1]
+    u = u[:,np.newaxis]
+
+    z_arg1 = zmax*(1. - u**2) + zc*u**2
+    integrand1 = (zmax-zc)*2*u*f(z_arg1)
+    result1 = semiopen_simpson(integrand1) * du
+
+    if inverted:
+        z_arg2 = zmin*(1. - u**2) + zc*u**2
+        integrand2 = (zc-zmin)*2*u*f(z_arg2)
+        result2 = semiopen_simpson(integrand2) * du
+    else: 
+        result2 = result1
+
+    return (result1 + result2)
+
 def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
     
@@ -536,6 +561,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         Bturn_arr = Bturn_arr[np.newaxis,:]
 
         ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
+        # TODO: sqrt sometimes breaks handle Bz>Bturn
         f = lambda z: ( energy * ax_freq / (PI * rho * velocity(energy)) *
             (2 - B(z) / Bturn_arr) * dBdRho(z) / np.sqrt(1. - B(z) / Bturn_arr) / B(z)**2 )
 
@@ -702,31 +728,4 @@ def power_larmor_e(field, energy):
     )
 
     return power_larmor
-
-def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints = 200):
-    ''' Performs fast axial integration of f(z) over one half period by changing variables to avoid discontinuity at turning point and calling semiopen_simpson.
-    Calculates \int_{zmin}^{zmax} f(z) dz
-    f: f(z) without change of variables
-    zmax, zmin, zc: format as array before passing
-    
-    Remember to double result for full period!
-    '''
-
-    u = np.linspace(0,1., nIntegralPoints)
-    du = u[1]
-    u[0] = u[1]
-    u = u[:,np.newaxis]
-
-    z_arg1 = zmax*(1. - u**2) + zc*u**2
-    integrand1 = (zmax-zc)*2*u*f(z_arg1)
-    result1 = semiopen_simpson(integrand1) * du
-
-    if inverted:
-        z_arg2 = zmin*(1. - u**2) + zc*u**2
-        integrand2 = (zc-zmin)*2*u*f(z_arg2)
-        result2 = semiopen_simpson(integrand2) * du
-    else: 
-        result2 = result1
-
-    return (result1 + result2)
 

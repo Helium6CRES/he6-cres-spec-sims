@@ -23,6 +23,7 @@ class TrapFieldProfile:
             self.trap_width = (-0.055,0.055)
         else:
             self.field_strength = self.initialize_field_strength_interp()
+            # a = [z, x, y, xz, yz, z^2, xy, x^2-y^2]
             self.trap_width = self.trap_width_calc()
 
         self.trap_center = self.initialize_trap_center_interp()
@@ -123,6 +124,28 @@ class TrapFieldProfile:
 
         return trap_width
 
+    def shim_field(self, rho, phi, z, a):
+        """
+        Returns field from shimming coils to be added to field_strength
+        a = [a1, a2, a3, a4, a5, a6, a7, a8]
+        Bshim = a1*z + a2*x+ a3*y + a4*xz + a5* yz + a6*z^2 + a7*xy + a8*(x^2+y^2)
+        """
+        # TODO: accept [a1, ..., a8] if passed 8 coefficients and insert a0 = main_field at start if passed 8
+
+        if len(a) != 8:
+            print(f"ERROR: shim_field requires 8 coefficients, but was passed {len(a)}.")
+            return 0
+
+        # easier indexing to match full field expansion
+        a.insert(0, self.main_field)
+
+        x = rho*np.cos(phi / RAD_TO_DEG)
+        y = rho*np.sin(phi / RAD_TO_DEG)
+
+        Bshim = a[1]*z + a[2]*x + a[3]*y + a[4]*x*z + a[5]*y*z + a[6]*z**2 + a[7]*x*y + a[8]*(x**2-y**2)
+
+        return Bshim
+     
     def test_trap_asym(self, rho, z):
         """
         Returns field strength for ideal asymmetrical harmonic trap
@@ -134,3 +157,4 @@ class TrapFieldProfile:
         
         return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
                 (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)
+

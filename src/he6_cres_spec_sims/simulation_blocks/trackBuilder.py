@@ -45,7 +45,8 @@ class TrackBuilder:
             try:
                 segment_num_max = int( bands_df[bands_df["event_num"] == event]["segment_num"].max())
             except:
-                breakpoint()
+                # breakpoint()
+                continue
 
             for segment in range(1, segment_num_max + 1):
                 fill_condition = (tracks_df["event_num"] == float(event)) & ( tracks_df["segment_num"] == segment)
