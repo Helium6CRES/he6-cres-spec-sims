@@ -67,26 +67,13 @@ class TrapFieldProfile:
         #return evaluation function for use
         return field_interp.ev
 
-    def field_strength(self, position, coords = "cylindrical"):
+    def field_strength(self, position):
 
         if len(position) != 3:
             print("ERROR: must pass 3 coordinates as an array")
 
-        if coords.lower() == "cylindrical":
-            rho = position[0]
-            z = position[2]
-        elif coords.lower() == "cartesian":
-            x = position[0]
-            y = position[1]
-            z = position[2]
-            rho = np.sqrt(x**2 + y**2)
-            phi = np.arctan2(y, x) # radians
-        else:
-            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
-            return 0
-
-        field_strength = self.main_trap_interp(rho, z)
-        field_strength += self.shim_field(self.shim_coefficients, position, coords)
+        field_strength = self.main_trap_interp(position)
+        field_strength += self.shim_field(position, self.shim_coefficients)
 
         return field_strength
 
@@ -105,7 +92,7 @@ class TrapFieldProfile:
         
         return trap_center_interp 
 
-    def find_trap_center(self, position, coords = "cylindrical"):
+    def find_trap_center(self, position):
         """finds the z-position of the center of an inverted trap by minimizing"""
 
         if not self.inverted:
@@ -114,28 +101,12 @@ class TrapFieldProfile:
         if len(position) != 3:
             print("ERROR: must pass 3 coordinates as an array")
 
-        if coords.lower() == "cylindrical":
-            rho = position[0]
-            phi = position[1]
-            x = rho*np.cos(phi / RAD_TO_DEG)
-            y = rho*np.sin(phi / RAD_TO_DEG)
-            z = position[2]
-        elif coords.lower() == "cartesian":
-            x = position[0]
-            y = position[1]
-            z = position[2]
-            rho = np.sqrt(x**2 + y**2)
-            phi = np.arctan2(y, x) * RAD_TO_DEG
-        else:
-            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
-            return 0
-
         waveguide_radius = 0.578e-2 # (m)
 
-        func = lambda z: self.field_strength([rho, phi, z])
+        func = lambda z: self.field_strength(position)
         z_side_coil = 4.3e-2 # hardcoded for now
         z_center = fmin(func, z_side_coil, xtol=1e-12, disp=False)[0]
-        # print(f"Trap center at rho={rho}: {z_center}")
+        # print(f"Trap center at rho={position[0]}: {z_center}")
         return z_center
 
     def trap_width_calc(self):
@@ -164,7 +135,7 @@ class TrapFieldProfile:
 
         return trap_width
 
-    def shim_field(self, shim_coefficients, position, coords = "cylindrical"):
+    def shim_field(self, position, shim_coefficients):
         """
         Returns field from shimming coils to be added to field_strength
         shim_coefficients = [a1, a2, a3, a4, a5, a6, a7, a8]
@@ -173,6 +144,7 @@ class TrapFieldProfile:
 
         # TODO (maybe): accept [a0, a1, ..., a8] if passed 9 coefficients and insert a0 = main_field at start if passed 8
         if len(shim_coefficients) != 8:
+            # debugging i think, don't need this here longterm
             print("ERROR: shim_field requires 8 coefficients")
             breakpoint()
             return 0
@@ -180,20 +152,12 @@ class TrapFieldProfile:
         if len(position) != 3:
             print("ERROR: must pass 3 coordinates as an array")
 
-        if coords.lower() == "cylindrical":
-            rho = position[0]
-            phi = position[1]
-            x = rho*np.cos(phi / RAD_TO_DEG)
-            y = rho*np.sin(phi / RAD_TO_DEG)
-            z = position[2]
-        elif coords.lower() == "cartesian":
-            x = position[0]
-            y = position[1]
-            z = position[2]
-        else:
-            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
-            return 0
-
+        rho = position[0]
+        phi = position[1]
+        x = rho*np.cos(phi / RAD_TO_DEG)
+        y = rho*np.sin(phi / RAD_TO_DEG)
+        z = position[2]
+        
         # easier indexing to match full field expansion
         a = shim_coefficients.copy()
         a.insert(0, self.main_field)
