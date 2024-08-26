@@ -88,7 +88,7 @@ class EventBuilder:
 
         # TODO: should initial_field be based on initial_rho_pos or rho_center?
         # should there be a separate initial_field_center?
-        initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
+        initial_field = self.config.field_strength(beta_position)
         initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
 
         # Given initial position, velocity vectors, compute guiding center position (x,y)
