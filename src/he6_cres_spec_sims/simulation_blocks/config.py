@@ -117,8 +117,9 @@ class Config:
         try:
             main_field = self.eventbuilder.main_field
             trap_current = self.eventbuilder.trap_current
-
-            self.trap_profile = TrapFieldProfile(main_field, trap_current)
+            shim_coefficients = self.eventbuilder["shim_coefficients"]
+            shim_coefficients_array = [shim_coefficients["a1"], shim_coefficients["a2"], shim_coefficients["a3"], shim_coefficients["a4"], shim_coefficients["a5"], shim_coefficients["a6"], shim_coefficients["a7"], shim_coefficients["a8"]]
+            self.trap_profile = TrapFieldProfile(main_field, trap_current, shim_coefficients_array)
             self.field_strength = self.trap_profile.field_strength
 
         except Exception as e:

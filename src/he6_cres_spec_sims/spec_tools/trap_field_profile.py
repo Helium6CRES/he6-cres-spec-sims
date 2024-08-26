@@ -3,28 +3,26 @@ import pathlib
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, CubicSpline
 from scipy.optimize import fmin
+from he6_cres_spec_sims.constants import RAD_TO_DEG
 
 class TrapFieldProfile:
-    def __init__(self, main_field, trap_current):
+    def __init__(self, main_field, trap_current, shim_coefficients):
 
         # TODO: May want to protect these variables with underscores?
         # TODO: Would be nice to have an attribute be the relative trap depth.
         # TODO: Add in trap radius as an attribute?
 
-        self.trap_current = trap_current
         self.inverted = trap_current*main_field < 0
+        self.trap_current = trap_current
         self.main_field = main_field
+        self.shim_coefficients = shim_coefficients
 
-        # there is probably a more elegant way to do this
-        test_asym = False
-        
-        if test_asym:
-            self.field_strength = self.test_trap_asym
-            self.trap_width = (-0.055,0.055)
-        else:
-            self.field_strength = self.initialize_field_strength_interp()
-            # a = [z, x, y, xz, yz, z^2, xy, x^2-y^2]
-            self.trap_width = self.trap_width_calc()
+        self.main_trap_interp = self.initialize_field_strength_interp()
+
+        # a = [z, x, y, xz, yz, z^2, xy, x^2-y^2]
+        # take this from config and pass in as argument?
+        self.shim_coefficients = [15.52,0,0,0,0,-1.81,0,0] # only z and z^2 for now
+        self.trap_width = self.trap_width_calc()
 
         self.trap_center = self.initialize_trap_center_interp()
 
@@ -38,7 +36,7 @@ class TrapFieldProfile:
         # self.relative_depth = (main_field - self.Bmin()) / main_field # unused?
 
     def initialize_field_strength_interp(self):
-        """Returns function object f(rho, z) which returns magnetic field (magnitudes?) as a function of position"""
+        """Returns function object f(rho, z) which returns magnetic field of main trap (magnitudes?) as a function of position"""
         # TODO: hmm I guess these need to be hardcoded for the moment.
         waveguide_radius = 0.578e-2  # (m)
         trap_zmax = 5.5e-2  # (m)
@@ -69,6 +67,29 @@ class TrapFieldProfile:
         #return evaluation function for use
         return field_interp.ev
 
+    def field_strength(self, position, coords = "cylindrical"):
+
+        if len(position) != 3:
+            print("ERROR: must pass 3 coordinates as an array")
+
+        if coords.lower() == "cylindrical":
+            rho = position[0]
+            z = position[2]
+        elif coords.lower() == "cartesian":
+            x = position[0]
+            y = position[1]
+            z = position[2]
+            rho = np.sqrt(x**2 + y**2)
+            phi = np.arctan2(y, x) # radians
+        else:
+            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
+            return 0
+
+        field_strength = self.main_trap_interp(rho, z)
+        field_strength += self.shim_field(self.shim_coefficients, position, coords)
+
+        return field_strength
+
     def initialize_trap_center_interp(self):
         """Returns function f(rho) which returns the trap center as a function of rho"""
         waveguide_radius = 0.578e-2 # (m)
@@ -84,15 +105,34 @@ class TrapFieldProfile:
         
         return trap_center_interp 
 
-    def find_trap_center(self, rho = 0):
+    def find_trap_center(self, position, coords = "cylindrical"):
         """finds the z-position of the center of an inverted trap by minimizing"""
 
         if not self.inverted:
             return 0.
 
+        if len(position) != 3:
+            print("ERROR: must pass 3 coordinates as an array")
+
+        if coords.lower() == "cylindrical":
+            rho = position[0]
+            phi = position[1]
+            x = rho*np.cos(phi / RAD_TO_DEG)
+            y = rho*np.sin(phi / RAD_TO_DEG)
+            z = position[2]
+        elif coords.lower() == "cartesian":
+            x = position[0]
+            y = position[1]
+            z = position[2]
+            rho = np.sqrt(x**2 + y**2)
+            phi = np.arctan2(y, x) * RAD_TO_DEG
+        else:
+            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
+            return 0
+
         waveguide_radius = 0.578e-2 # (m)
 
-        func = lambda z: self.field_strength(rho, z)
+        func = lambda z: self.field_strength([rho, phi, z])
         z_side_coil = 4.3e-2 # hardcoded for now
         z_center = fmin(func, z_side_coil, xtol=1e-12, disp=False)[0]
         # print(f"Trap center at rho={rho}: {z_center}")
@@ -109,7 +149,7 @@ class TrapFieldProfile:
         trap_zmax, not totally sure how to do that 
         """
 
-        func = lambda z: -1 * self.field_strength(0, z)
+        func = lambda z: -1 * self.field_strength([0, 0, z])
 
         if self.inverted:
             trap_zmax = 5.5e-2  # (m)
@@ -124,28 +164,45 @@ class TrapFieldProfile:
 
         return trap_width
 
-    def shim_field(self, rho, phi, z, a):
+    def shim_field(self, shim_coefficients, position, coords = "cylindrical"):
         """
         Returns field from shimming coils to be added to field_strength
-        a = [a1, a2, a3, a4, a5, a6, a7, a8]
-        Bshim = a1*z + a2*x+ a3*y + a4*xz + a5* yz + a6*z^2 + a7*xy + a8*(x^2+y^2)
+        shim_coefficients = [a1, a2, a3, a4, a5, a6, a7, a8]
+        Bshim = a1*z + a2*x+ a3*y + a4*xz + a5* yz + a6*z^2 + a7*xy + a8*(x^2-y^2)
         """
-        # TODO: accept [a1, ..., a8] if passed 8 coefficients and insert a0 = main_field at start if passed 8
 
-        if len(a) != 8:
-            print(f"ERROR: shim_field requires 8 coefficients, but was passed {len(a)}.")
+        # TODO (maybe): accept [a0, a1, ..., a8] if passed 9 coefficients and insert a0 = main_field at start if passed 8
+        if len(shim_coefficients) != 8:
+            print("ERROR: shim_field requires 8 coefficients")
+            breakpoint()
+            return 0
+
+        if len(position) != 3:
+            print("ERROR: must pass 3 coordinates as an array")
+
+        if coords.lower() == "cylindrical":
+            rho = position[0]
+            phi = position[1]
+            x = rho*np.cos(phi / RAD_TO_DEG)
+            y = rho*np.sin(phi / RAD_TO_DEG)
+            z = position[2]
+        elif coords.lower() == "cartesian":
+            x = position[0]
+            y = position[1]
+            z = position[2]
+        else:
+            print("ERROR: coordinate system must be either 'cylindrical' or 'cartesian'")
             return 0
 
         # easier indexing to match full field expansion
+        a = shim_coefficients.copy()
         a.insert(0, self.main_field)
-
-        x = rho*np.cos(phi / RAD_TO_DEG)
-        y = rho*np.sin(phi / RAD_TO_DEG)
 
         Bshim = a[1]*z + a[2]*x + a[3]*y + a[4]*x*z + a[5]*y*z + a[6]*z**2 + a[7]*x*y + a[8]*(x**2-y**2)
 
         return Bshim
      
+    '''
     def test_trap_asym(self, rho, z):
         """
         Returns field strength for ideal asymmetrical harmonic trap
@@ -157,4 +214,4 @@ class TrapFieldProfile:
         
         return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
                 (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)
-
+    '''
