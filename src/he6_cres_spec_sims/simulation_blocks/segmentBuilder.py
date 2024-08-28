@@ -36,10 +36,11 @@ class SegmentBuilder:
             event = self.fill_in_properties(event)
 
             # Extract position and center theta from event.
-            center_x, center_y = event["center_x"], event["center_y"]
             rho_pos = event["initial_rho_pos"]
             phi_pos = event["initial_phi_pos"]
-            zpos = 0
+            zpos = 0 # why is this not event["initial_zpos"] ??
+            position = [rho_pos, phi_pos, zpos]
+            center_x, center_y = event["center_x"], event["center_y"]
             center_theta = event["center_theta"]
             phi_dir = event["initial_phi_dir"]
 
@@ -71,7 +72,7 @@ class SegmentBuilder:
                 scattered_segment = event.copy()
 
                 # Create new scattered segment then check if its trapped
-                scattered_segment_df, center_theta = self.scatter_segment(center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num)
+                scattered_segment_df, center_theta = self.scatter_segment(center_theta, energy_stop, position, phi_dir,event_num, beta_num)
 
                 # Fourth, check to see if the scattered beta is trapped.
                 is_trapped = self.eventbuilder.trap_condition(scattered_segment_df)
@@ -97,10 +98,15 @@ class SegmentBuilder:
 
         return scattered_df
     
-    def scatter_segment(self, center_theta, energy_stop, rho_pos, phi_pos, zpos, phi_dir,event_num, beta_num):
+    def scatter_segment(self, center_theta, energy_stop, position, phi_dir,event_num, beta_num):
         """Creates Scattered segment from initial event conditions.
         TODO find more elegant solution to dealing with center_theta, I don't like that its being passed around so much.
         """
+
+        if len(position) != 3:
+            print("ERROR: must pass 3 coordinates as an array")
+            return False
+
         # Jump Size
         jump_size_eV = self.jump_distribution.generate()
 
@@ -141,7 +147,7 @@ class SegmentBuilder:
 
         # New position and direction. Only center_theta is changing right now.
         beta_position, beta_direction = (
-            [rho_pos, phi_pos, zpos],
+            position,
             [center_theta, phi_dir],
         )
 
@@ -158,29 +164,36 @@ class SegmentBuilder:
         main_field = self.config.eventbuilder.main_field
         decay_cell_radius = self.config.eventbuilder.decay_cell_radius
 
-        # print("\n")
-        # print(df)
-        # print("\n")
+        rho_center = np.asarray(df["rho_center"])
+        initial_phi_pos = np.asarray(df["initial_phi_pos"])
+        initial_zpos = np.asarray(df["initial_zpos"])
+        energy = np.asarray(df["energy"])
+        center_theta = np.asarray(df["center_theta"])
+        center_x = np.asarray(df["center_x"])
+        center_y = np.asarray(df["center_y"])
+        segment_length = np.asarray(df["segment_length"])
+
         # Calculate all relevant segment parameters. Order matters here.
-        trap_center = trap_profile.trap_center(df["rho_center"])
+        trap_center = trap_profile.trap_center(rho_center)
 
-        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
-        zmin = sc.min_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile, max_z = zmax)
+        position = np.array([rho_center, initial_phi_pos, initial_zpos])
+        
+        zmax = sc.max_zpos(energy, center_theta, position[0], position[1], trap_profile)
+        zmin = sc.min_zpos(energy, center_theta, position[0], position[1], trap_profile, max_z = zmax)
 
-        axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        axial_freq = sc.axial_freq( energy, center_theta, position, trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
-        b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
-        avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
+        b_avg = sc.b_avg( energy, center_theta, position, trap_profile, axial_freq)
+        avg_cycl_freq = sc.energy_to_freq(energy, b_avg)
 
-        grad_b_freq = sc.grad_b_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
-        zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
+        grad_b_freq = sc.grad_b_freq( energy, center_theta, position, trap_profile, axial_freq)
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
 
         segment_radiated_power_te11 = (
             pc.power_calc(
-                df["center_x"],
-                df["center_y"],
+                center_x,
+                center_y,
                 avg_cycl_freq,
                 main_field,
                 decay_cell_radius,
@@ -192,15 +205,15 @@ class SegmentBuilder:
 
         # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
 
-        energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
+        energy_stop = ( energy - segment_radiated_power_tot * segment_length * J_TO_EV)
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
             energy_stop[energy_stop < 0]  = 1e-10
         elif energy_stop < 0:
             energy_stop = 1e-10
 
-        freq_stop = sc.avg_cycl_freq( energy_stop, df["center_theta"], df["rho_center"], trap_profile)
-        slope = (freq_stop - avg_cycl_freq) / df["segment_length"]
+        freq_stop = sc.avg_cycl_freq( energy_stop, center_theta, position, trap_profile)
+        slope = (freq_stop - avg_cycl_freq) / segment_length
 
         segment_power = segment_radiated_power_te11 / 2
 

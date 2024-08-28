@@ -15,20 +15,18 @@ class TrapFieldProfile:
         self.inverted = trap_current*main_field < 0
         self.trap_current = trap_current
         self.main_field = main_field
+
         self.shim_coefficients = shim_coefficients
 
         self.main_trap_interp = self.initialize_field_strength_interp()
 
-        # a = [z, x, y, xz, yz, z^2, xy, x^2-y^2]
-        # take this from config and pass in as argument?
-        self.shim_coefficients = [15.52,0,0,0,0,-1.81,0,0] # only z and z^2 for now
         self.trap_width = self.trap_width_calc()
 
         self.trap_center = self.initialize_trap_center_interp()
 
         # min and max fields of trap with rho dependence
-        self.Bmin = lambda rho = 0: self.field_strength(rho, self.trap_center(rho)) 
-        self.Bmax = lambda rho = 0: self.field_strength(rho,self.trap_width[1]) 
+        self.Bmin = lambda rho = 0: self.field_strength([rho, 0, self.trap_center(rho)]) 
+        self.Bmax = lambda rho = 0: self.field_strength([rho, 0, self.trap_width[1]]) 
 
         # TODO: Actually test to be sure it is a trap.
         self.is_trap = True
@@ -44,7 +42,7 @@ class TrapFieldProfile:
         grid_edge_length = 4e-4  # (m), it was found that grid_edge_length = 5e-4 results in 1ppm agreement between field_stength and field_strength_interp
 
         rho_array = np.arange(0, waveguide_radius, grid_edge_length)
-        z_array = np.arange(-trap_zmax, trap_zmax, grid_edge_length)# + self.trap_center
+        z_array = np.arange(-trap_zmax, trap_zmax, grid_edge_length)
 
         dir_path = pathlib.Path(__file__).parents[0]
 
@@ -72,7 +70,7 @@ class TrapFieldProfile:
         if len(position) != 3:
             print("ERROR: must pass 3 coordinates as an array")
 
-        field_strength = self.main_trap_interp(position)
+        field_strength = self.main_trap_interp(position[0], position[2])
         field_strength += self.shim_field(position, self.shim_coefficients)
 
         return field_strength
@@ -85,7 +83,8 @@ class TrapFieldProfile:
         trap_center_array = np.zeros(np.size(rho_array))
         
         for i in range(len(rho_array)):
-            trap_center_array[i] = self.find_trap_center(rho_array[i]) 
+            # !!!!!!!!!!!! no phi dependence
+            trap_center_array[i] = self.find_trap_center([rho_array[i], 0, 0]) 
         
         # is extrapolate ever useful? 
         trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=False)
@@ -145,25 +144,28 @@ class TrapFieldProfile:
         # TODO (maybe): accept [a0, a1, ..., a8] if passed 9 coefficients and insert a0 = main_field at start if passed 8
         if len(shim_coefficients) != 8:
             # debugging i think, don't need this here longterm
-            print("ERROR: shim_field requires 8 coefficients")
-            breakpoint()
-            return 0
+            raise ValueError("shim_field requires 8 coefficients")
 
         if len(position) != 3:
-            print("ERROR: must pass 3 coordinates as an array")
+            raise ValueError("must pass 3 coordinates as an array")
 
         rho = position[0]
         phi = position[1]
         x = rho*np.cos(phi / RAD_TO_DEG)
         y = rho*np.sin(phi / RAD_TO_DEG)
         z = position[2]
-        
-        # easier indexing to match full field expansion
+
+        # unit conversions
+        # ppm/cm->T/m (quadrupole moments)
+        # ppm/cm^2->T/m^2 (sextupole moments)
+        shim_coefficients_conversion = self.main_field * np.array([1., 1., 1., 1.0e2, 1.0e2, 1.0e2, 1.0e2, 1.0e2]) * 1.0e-4 
         a = shim_coefficients.copy()
-        a.insert(0, self.main_field)
+        a = np.multiply(a, shim_coefficients_conversion)
+
+        # easier indexing to match full field expansion
+        a = np.insert(a, 0, self.main_field)
 
         Bshim = a[1]*z + a[2]*x + a[3]*y + a[4]*x*z + a[5]*y*z + a[6]*z**2 + a[7]*x*y + a[8]*(x**2-y**2)
-
         return Bshim
      
     '''

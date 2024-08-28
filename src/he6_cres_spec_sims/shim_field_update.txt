@@ -1,0 +1,43 @@
+Adding shim field support to trap_field_profile.py
+
+Problem: need to track field strength in 3D instead of just (rho, z)
+
+Planning to rewrite some parts of trap_field_profile.py without breaking too much compatibility.
+
+Updating spec_calc and simulation blocks to start passing `position = [rho, phi, z]` around instead of individual components. 
+
+Methods that handle positions this way should check: 
+```
+def f(position):
+	if len(position) != 3:
+		raise ValueError("ERROR: must pass 3 coordinates as an array")
+	
+	rho = position[0]
+	phi = position[1]
+	z = position[2]
+```
+
+Make sure rho, phi, z are numpy arrays. This can be handled, for example, like this:
+```
+if not isinstance(rho, np.ndarray):
+	rho = np.asarray(rho)
+```
+
+TODO:
+[x] write field_strength as a method instead of a lambda
+[x] get rid of test_asym? -> commented out
+[x] shim coefficients from config
+	[x] add shim coefficients to yaml config
+	[x] pass shim cofficients to trapfieldprofile
+[x] spec_calc: every function that takes rho or z updated to handle position vector
+[x] trap_field_profile: remove cartesian coord handling
+[] trap_field_profile: Bmin and Bmax should accept position not just rho, even if they don't do anything with it
+[] trap_field_profile: trap_center might have phi dependence now... time to say goodbye to interpolated trap_center?
+[x] eventBuilder: todo
+[x] segmentBuilder: finish updating fill_in_properties after doing eventBuilder updates
+[] spec_calc: max_zpos, min_zpos bandage has a bandage fix for iterating over positions (pass coords separately). Would broadcasting position as (n,3) shape array let you iterate?
+
+
+[] spec_calc: update sideband calc functions? left untouched since I'm less familiar with them, everything after grad_b_freq()
+
+Status: simulation completes without scattering, trackBuilder breaks with scattering. segmentBuilder is very slow with scattering

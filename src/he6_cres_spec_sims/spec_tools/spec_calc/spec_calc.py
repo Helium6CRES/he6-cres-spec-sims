@@ -44,7 +44,6 @@ def momentum(energy):
     momentum = (((energy + ME) ** 2 - ME**2) / C**2) ** 0.5 / J_TO_EV
     return momentum
 
-
 def velocity(energy):
     velocity = momentum(energy) / (gamma(energy) * M)
     return velocity
@@ -222,7 +221,7 @@ def min_theta(position, trap_profile):
         Bmax = trap_profile.field_strength([rho, phi, trap_profile.trap_width[1]])
         Bz = trap_profile.field_strength(position)
         
-        if Bz>Bmax:
+        if np.any(Bz>Bmax):
             # avoid arcsin error, will be handled by trap_condition anyways
             return False
 
@@ -235,33 +234,26 @@ def min_theta(position, trap_profile):
         return False
 
 @np.vectorize
-def max_zpos(energy, center_pitch_angle, position, trap_profile, debug=False):
+def max_zpos(energy, center_pitch_angle, rho, phi, trap_profile, debug=False):
 
-    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle and rho.
+    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle, rho, and phi.
        One would ideally prefer minimization which was not looped (with np.vectorize)
        In practice, library multi-dimensional minimizers are slower, even if Jacobian is diagonal
     """
 
     if trap_profile.is_trap:
 
-        if len(position) != 3:
-            print("ERROR: must pass 3 coordinates as an array")
-            return False
-
-        rho = position[0]
-        phi = position[1]
-        z = position[2]
-
-        if center_pitch_angle < min_theta(position, trap_profile.trap_center(rho), trap_profile):
+        if center_pitch_angle < min_theta([rho, phi, trap_profile.trap_center(rho)], trap_profile):
             # print("WARNING: Electron not trapped (max_zpos)")
             return False
 
         else:
+
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
             c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
             
-            if np.any(rho_p > 0.578e-2):
+            if rho_p > 0.578e-2:
                 print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
             min_field = trap_profile.Bmin(rho_p) 
@@ -295,24 +287,16 @@ def max_zpos(energy, center_pitch_angle, position, trap_profile, debug=False):
         return False
 
 @np.vectorize
-def min_zpos(energy, center_pitch_angle, position, trap_profile, debug=False, max_z = None):
+def min_zpos(energy, center_pitch_angle, rho, phi, trap_profile, debug=False, max_z = None):
 
-    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle and rho.
+    """Calculates the maximum axial length from center of trap as a function of center_pitch_angle, rho, and phi.
        One would ideally prefer minimization which was not looped (with np.vectorize)
        In practice, library multi-dimensional minimizers are slower, even if Jacobian is diagonal
     """
     
     if trap_profile.is_trap:
-
-        if len(position) != 3:
-            print("ERROR: must pass 3 coordinates as an array")
-            return False
-
-        rho = position[0]
-        phi = position[1]
-        z = position[2]
-
-        if center_pitch_angle < min_theta(rho, trap_profile.trap_center(rho), trap_profile):
+        
+        if center_pitch_angle < min_theta([rho, phi, trap_profile.trap_center(rho)], trap_profile):
             print("WARNING: Electron not trapped (min_zpos)")
             return False
 
@@ -399,7 +383,7 @@ def curr_pitch_angle(position, center_pitch_angle, trap_profile):
         z = position[2]
 
         min_field = trap_profile.Bmin(rho)
-        max_z = max_zpos(center_pitch_angle, position, trap_profile)
+        max_z = max_zpos(center_pitch_angle, position[0], position[1], trap_profile)
         max_reached_field = trap_profile.field_strength([rho, phi, maz_z])
 
         if np.any(abs(zpos) > max_z):
@@ -480,7 +464,7 @@ def axial_freq(energy, center_pitch_angle, position, trap_profile, nIntegralPoin
         B = lambda z: trap_profile.field_strength([rho_p, phi, z])
 
         # Should optionally pass these in as argument to reuse calculations!
-        zmax = max_zpos(energy, center_pitch_angle, position, trap_profile)
+        zmax = max_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile)
         zmax_arr = np.atleast_1d(np.array(zmax))
         zmax_arr = zmax_arr[np.newaxis,:]
         
@@ -488,7 +472,7 @@ def axial_freq(energy, center_pitch_angle, position, trap_profile, nIntegralPoin
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
 
-        zmin = min_zpos(energy, center_pitch_angle, position, trap_profile) 
+        zmin = min_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile) 
         zmin_arr = np.atleast_1d(np.array(zmin))
         zmin_arr = zmin_arr[np.newaxis,:]
 
@@ -498,7 +482,6 @@ def axial_freq(energy, center_pitch_angle, position, trap_profile, nIntegralPoin
         f = lambda z: 1. / velocity(energy) / np.sqrt(1. - B(z)/Bturn_arr)
         
         T_a = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
-        
         axial_frequency = 1. / T_a
 
         return axial_frequency
@@ -563,11 +546,11 @@ def b_avg(energy, center_pitch_angle, position, trap_profile, ax_freq=None, nInt
         Bpp = lambda z: trap_profile.field_strength([rho_pp, phi, z])
 
         # Should optionally pass these in as argument to reuse calculations!
-        zmax = max_zpos(energy, center_pitch_angle, position, trap_profile)
+        zmax = max_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile)
         zmax_arr = np.atleast_1d(np.array(zmax))
         zmax_arr = zmax_arr[np.newaxis,:]
 
-        zmin = min_zpos(energy, center_pitch_angle, position, trap_profile)
+        zmin = min_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile)
         zmin_arr = np.atleast_1d(np.array(zmin))
         zmin_arr = zmin_arr[np.newaxis,:]
 
@@ -621,11 +604,11 @@ def grad_b_freq(energy, center_pitch_angle, position, trap_profile, ax_freq=None
         dBdRho = lambda z: (trap_profile.field_strength([rho + rho_delta, phi, z]) - trap_profile.field_strength([rho - rho_delta, phi, z])) / (2. * rho_delta)
 
         # Should optionally pass zmax, etc. in as argument to reuse calculations!
-        zmax = max_zpos(energy, center_pitch_angle, position, trap_profile)
+        zmax = max_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile)
         zmax_arr = np.atleast_1d(np.array(zmax))
         zmax_arr = zmax_arr[np.newaxis,:]
 
-        zmin = min_zpos(energy, center_pitch_angle, position, trap_profile)
+        zmin = min_zpos(energy, center_pitch_angle, position[0], position[1], trap_profile)
         zmin_arr = np.atleast_1d(np.array(zmin))
         zmin_arr = zmin_arr[np.newaxis,:]
 

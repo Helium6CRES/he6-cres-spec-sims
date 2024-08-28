@@ -108,7 +108,8 @@ class EventBuilder:
             print(f"WARNING: rho_center = {rho_center} exceeds waveguide radius!")
             # breakpoint()
 
-        center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
+        position = [rho_center, initial_phi_pos, initial_zpos]
+        center_theta = sc.theta_center(position, initial_theta, self.config.trap_profile)
 
         # Use B at turning point to determine if trapped
         b_min = self.config.trap_profile.Bmin(rho_center)
@@ -116,9 +117,9 @@ class EventBuilder:
         b_turn = b_min / pow( math.sin(center_theta / RAD_TO_DEG), 2)
 
         # Use trapped_initial_theta to determine if trapped.
-        trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
-        max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
-        min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
+        trapped_initial_theta = sc.min_theta(position, self.config.trap_profile)
+        max_radius = sc.max_radius( beta_energy, center_theta, position, self.config.trap_profile)
+        min_radius = sc.min_radius( beta_energy, center_theta, position, self.config.trap_profile)
 
 
         segment_properties = {
