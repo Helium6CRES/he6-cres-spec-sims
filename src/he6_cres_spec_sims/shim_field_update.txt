@@ -23,6 +23,21 @@ if not isinstance(rho, np.ndarray):
 	rho = np.asarray(rho)
 ```
 
+Config
+Add the following to your config yaml
+```
+EventBuilder:
+    shim_coefficients: 
+      a1: 15.52 # ppm/cm
+      a2: 13.79 # ppm/cm
+      a3: -1.61 # ppm/cm
+      a4:  4.78 # ppm/cm^2
+      a5:  2.37 # ppm/cm^2
+      a6: -1.81 # ppm/cm^2
+      a7:  0.82 # ppm/cm^2
+      a8: -0.47 # ppm/cm^2
+```
+
 TODO:
 [x] write field_strength as a method instead of a lambda
 [x] get rid of test_asym? -> commented out
