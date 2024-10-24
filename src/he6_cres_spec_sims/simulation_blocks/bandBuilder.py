@@ -1,5 +1,6 @@
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import pandas as pd
+from he6_cres_spec_sims.simulation_blocks.segmentBuilder import * 
 
 class BandBuilder:
     """ Constructs list of sidebands and powers for trapped "segments", between scatters
@@ -9,7 +10,7 @@ class BandBuilder:
 
         self.config = config
 
-    def run(self, segments_df):
+    def run(self, tracks_df, segments):
 
         print("~~~~~~~~~~~~BandBuilder Block~~~~~~~~~~~~~~\n")
         sideband_num = self.config.bandbuilder.sideband_num
@@ -20,7 +21,7 @@ class BandBuilder:
         total_band_num = sideband_num * 2 + 1
         band_list = []
 
-        for segment_index, row in segments_df.iterrows():
+        for tracks_index, row in tracks_df.iterrows():
 
             if harmonic_sidebands:
                 sideband_amplitudes = sc.sideband_calc(
@@ -65,6 +66,16 @@ class BandBuilder:
                     # append to band_list, as it's better to grow a list than a df
                     band_list.append(row_copy.tolist())
 
-        bands_df = pd.DataFrame(band_list, columns=segments_df.columns)
+                    if band_num==0:
+                        for segment in segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][0]:
+                            segment.set_power(row_copy["band_power_start"])
+
+                    else:
+                        track_segments = segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][0]
+                        freq_shift = row_copy["avg_cycl_freq"] - row["avg_cycl_freq"]
+                        new_tracks = [segment.copy().shift_frequency(freq_shift).set_band(band_num) for segment in track_segments]
+                        segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][band_num] = new_tracks
+
+        bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
 
         return bands_df
