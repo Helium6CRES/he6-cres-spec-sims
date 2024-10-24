@@ -414,6 +414,64 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         print("ERROR: Given trap profile is not a valid trap")
         return False
 
+
+def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=200):
+    """Calculates the axial frequency of trapped electrons."""
+    if trap_profile.is_trap:
+        # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
+        # Sets allowed range, "clipping" the pitches at 90 deg.
+        center_pitch_angle = np.clip(center_pitch_angle, 0, 89.9999)
+
+        # Get cyclotron-radius modified "effective" guiding center rho
+        #c_r = cyc_radius( energy, trap_profile.field_strength(rho, 0), center_pitch_angle)
+        #rho_p = np.sqrt(rho**2 + c_r**2 / 2)
+
+        if ax_freq is None:
+            ax_freq = axial_freq(energy, center_pitch_angle, rho, trap_profile)
+
+        # Field at center of trap
+        B0 = trap_profile.field_strength(rho, 0)
+        # Field at turning point
+        Bmax = B0 / np.sin(center_pitch_angle / RAD_TO_DEG)**2
+
+        B = lambda z: trap_profile.field_strength(rho, z)
+
+        rho_delta = 1e-7
+        dBdRho = lambda z: (trap_profile.field_strength(rho + rho_delta, z) - trap_profile.field_strength(rho - rho_delta, z)) / (2. * rho_delta)
+
+        # Should optionally pass these in as argument to reuse calculations!
+        zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
+
+        # See write-ups XXX for more information on this integral
+        u = np.linspace(0,1., nIntegralPoints)
+        du = u[1]
+        # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
+        u[0] = u[1]
+
+        zmax_arr = np.atleast_1d(np.array(zmax))
+        Bmax_arr = np.atleast_1d(np.array(Bmax))
+
+        u = u[:,np.newaxis]
+        zmax_arr = zmax_arr[np.newaxis,:]
+        Bmax_arr = Bmax_arr[np.newaxis,:]
+
+        z_arg = zmax_arr *(1.-u**2)
+        integrand = u * (2 - B(z_arg) / Bmax_arr) * dBdRho(z_arg)  / (np.sqrt(1. - B(z_arg) / Bmax_arr) * B(z_arg)**2)
+
+        ### Energy == KINETIC ENERGY (γ-1) m c**2. Multiply by Q because energy is in eV, not Joules
+        grad_B_frequency = 4 / PI * (energy * zmax * ax_freq) / (rho  * velocity(energy)) * semiopen_simpson(integrand) * du
+
+        #We don't really care which direction it goes: just want to report a frequency
+        grad_B_frequency = np.abs(grad_B_frequency)
+
+        return grad_B_frequency
+
+    else:
+        print("ERROR: Given trap profile is not a valid trap")
+        return False
+
+
+
 def waveguide_beta(omega):
     """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode
     """

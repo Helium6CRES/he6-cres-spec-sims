@@ -164,8 +164,10 @@ class SegmentBuilder:
         # TODO: Make this more accurate as per discussion with RJ.
         b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
+        grad_b_freq = sc.grad_b_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         zmax = sc.max_zpos( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
+
 
         segment_radiated_power_te11 = (
             pc.power_calc(
@@ -198,6 +200,7 @@ class SegmentBuilder:
         df["axial_freq"] = axial_freq
         df["avg_cycl_freq"] = avg_cycl_freq
         df["b_avg"] = b_avg
+        df["grad_b_freq"] = grad_b_freq
         df["freq_stop"] = freq_stop
         df["energy_stop"] = energy_stop
         df["zmax"] = zmax
