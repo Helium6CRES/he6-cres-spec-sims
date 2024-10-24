@@ -8,8 +8,8 @@ Physics:
     betas_to_simulate : 100
     energy_spectrum: 
         beta_source: "Ne19"
-    freq_acceptance_high: 18.0e+9
-    freq_acceptance_low: 19.1e+9
+    freq_acceptance_high: 19.1e+9
+    freq_acceptance_low: 18.0e+9
     min_rho : 0.0
     max_rho : 5.78e-3
     min_z : -2.5e-3
