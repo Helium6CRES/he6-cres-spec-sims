@@ -21,14 +21,9 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.fft import fft
 from scipy.optimize import root_scalar
-from scipy.misc import derivative
 from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
-
-
-
-
 
 def central_diff(f, x, dx=1e-6):
     """
