@@ -13,7 +13,7 @@ class DAQ:
     """  If called, this module  passes through list of downmixed bands through the DAQ, producing fake .spec(k) files
          These can be passed through Katydid, identically to data
          Converts bands to time-domain signals, s(t). FFTs give S(f), for each slice
-         Data = |S(f) + N(f)|**2, converted to uint8, and written to .spec(k) files
+         Data = S(f) + N(f), converted to uint8 for real and imaginary parts, and written to .spec(k) files
     """
 
     def __init__(self, config):
@@ -147,13 +147,17 @@ class DAQ:
                 # roach_inverted_flag=True (so this is number of slices either before or after summing/tossing)
                 spec_array += self.get_noise_array(spec_array.shape[0])
 
-                # Computer Fourier power (magnitude_squared)
-                spec_array = np.abs(spec_array)**2
+                if self.config.daq.spec_suffix == "ispeck":
+                    spec_array_real = np.real(spec_array)
+                    spec_array_imag = np.imag(spec_array)
 
-                if not self.config.daq.roach_inverted_flag:
-                    spec_array = self.roach_slice_sum(spec_array)
-
-                spec_array = np.clip(spec_array, a_min=0, a_max=255)
+                    bit_depth = 32
+                    spec_array_real = np.clip(spec_array_real, a_min=-2**(bit_depth//2), a_max=2**(bit_depth//2)-1)
+                    spec_array_imag = np.clip(spec_array_imag, a_min=-2**(bit_depth//2), a_max=2**(bit_depth//2)-1)
+                else:
+                    spec_array = np.abs(spec_array)**2
+                    if not self.config.daq.roach_inverted_flag:
+                        spec_array = self.roach_slice_sum(spec_array)
 
                 # Write chunk to spec file.
                 for channel in range(self.n_channels):
@@ -163,8 +167,11 @@ class DAQ:
                         self.write_to_spec(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet)
                     elif self.config.daq.spec_suffix == "speck":
                         self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet, channel)
+                    elif self.config.daq.spec_suffix == "ispeck":
+                        self.write_to_ispeck(spec_array_real[:,self.bins[channel]], spec_array_imag[:, self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet, channel)
+
                     else:
-                        raise ValueError('Invalid spec_suffix: spec || speck')
+                        raise ValueError('Invalid spec_suffix: spec || speck || ispeck')
 
                 initial_packet += spec_array.shape[0]
                 initial_packet = initial_packet % 2**20
@@ -492,6 +499,64 @@ class DAQ:
 
             data = data.flatten().astype("uint8")
             data.tofile(speck_file)
+
+        #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
+        #print("Fraction passing 0-supp: ",fractionHighPowerPoints)
+
+        return None
+
+    def write_to_ispeck(self, spec_array_real, spec_array_imag, ispeck_file_path, initial_packet, channel):
+        """
+        Append to an existing ispeck file (zero-suppressed complex data). This is necessary because 
+        the raw spec arrays get too large for 1s worth of data.
+        Formatted with int32 rather than uint8, pending someone smarter than me optimizing it
+        """
+
+        ispeck_dtype = np.int32
+
+        slices_in_spec, freq_bins_in_spec = spec_array_real.shape
+
+        # Append mostly empty packet header to data
+        header = np.zeros(32, dtype = ispeck_dtype)
+
+        # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
+        footer = np.zeros(3, dtype = ispeck_dtype)
+
+        if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
+                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
+
+        data = bytearray() 
+
+        #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
+        jThreshold0 = channel * freq_bins_in_spec
+        thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
+        
+        power = np.abs(spec_array_real)**2 + np.abs(spec_array_imag)**2
+
+        for s in range(slices_in_spec):
+            packet_num = initial_packet + s
+            header[9] = packet_num
+            data.extend(header.tobytes())
+            # select indices of spectrogram [0-4096] above threshold. Loop is slow!
+            mask = power[s] > thresholds
+            if not np.any(mask):
+                data.extend(footer.tobytes())
+                continue
+            
+            indices = np.nonzero(mask)[0].astype(ispeck_dtype)
+            real_vals = spec_array_real[s, mask].astype(ispeck_dtype)
+            imag_vals = spec_array_imag[s, mask].astype(ispeck_dtype)
+            indices = np.where(power[s] > thresholds)[0]
+
+            # pack as [index, real, imag]
+            triplets = np.column_stack((indices, real_vals, imag_vals)).astype(ispeck_dtype)
+            data.extend(triplets.tobytes())
+            
+            data.extend(footer)
+
+        # Pass "ab" to append to a binary file
+        with open(ispeck_file_path, "ab") as f:
+            f.write(data)
 
         #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
         #print("Fraction passing 0-supp: ",fractionHighPowerPoints)
