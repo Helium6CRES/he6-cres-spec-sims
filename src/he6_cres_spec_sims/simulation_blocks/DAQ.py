@@ -468,37 +468,53 @@ class DAQ:
         worth of data.
         """
 
+        # if not uint8, call .tobytes() on every object you append/extend to data
+        # to prevent unexpected behavior. Otherwise not necessary, just extra copying
+        speck_dtype = np.uint8
+
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
         # Append mostly empty packet header to data
-        header = np.zeros(32)
+        header = np.zeros(32, dtype = speck_dtype)
 
         # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
-        footer = np.zeros(3)
+        footer = np.zeros(3, dtype = speck_dtype)
 
         if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
                 raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
 
-        data = np.array([])
+        data = bytearray()
 
         #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
         jThreshold0 = channel * freq_bins_in_spec
         thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
 
-        # Pass "ab" to append to a binary file
-        with open(speck_file_path, "ab") as speck_file:
-            for s in range(slices_in_spec):
-                header[9:12] = self.packet_num_base_256(initial_packet + s)
-                data = np.append(data, header)
-                # select indices of spectrogram [0-4096] above threshold. Loop is slow!
-                indices = np.where(spec_array[s] >  thresholds)[0]
-                for j in indices:
-                    data = np.append(data, self.add_high_power_point(j))
-                    data = np.append(data, spec_array[s][j])
-                data = np.append(data, footer)
+        mask = spec_array > thresholds
 
-            data = data.flatten().astype("uint8")
-            data.tofile(speck_file)
+        for s in range(slices_in_spec):
+            header[9:12] = self.packet_num_base_256(initial_packet + s)
+            data.extend(header)
+
+            # select indices of spectrogram [0-4096] above threshold. vectorized
+            if not np.any(mask[s]):
+                data.extend(footer)
+                continue
+
+            indices = np.nonzero(mask[s])[0]
+
+            idx_ones_base256 = indices % 256
+            idx_tens_base256 = (indices - idx_ones_base256) // 256
+            spec_slice = spec_array[s, mask[s]]
+
+            # pack as [idxTens, idxOnes, spec_array]
+            triplets = np.column_stack((idx_tens_base256, idx_ones_base256 , spec_slice)).astype(speck_dtype)
+            data.extend(triplets)
+            
+            data.extend(footer)
+
+        # Pass "ab" to append to a binary file
+        with open(speck_file_path, "ab") as f:
+            f.write(data)
 
         #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
         #print("Fraction passing 0-supp: ",fractionHighPowerPoints)
@@ -509,7 +525,7 @@ class DAQ:
         """
         Append to an existing ispeck file (zero-suppressed complex data). This is necessary because 
         the raw spec arrays get too large for 1s worth of data.
-        Formatted with int32 rather than uint8, pending someone smarter than me optimizing it
+        Formatted with int32 rather than uint8
         """
 
         ispeck_dtype = np.int32
@@ -533,20 +549,19 @@ class DAQ:
         
         power = np.abs(spec_array_real)**2 + np.abs(spec_array_imag)**2
 
+        mask = power > thresholds
         for s in range(slices_in_spec):
             packet_num = initial_packet + s
             header[9] = packet_num
             data.extend(header.tobytes())
-            # select indices of spectrogram [0-4096] above threshold. Loop is slow!
-            mask = power[s] > thresholds
-            if not np.any(mask):
+            # select indices of spectrogram [0-4096] above threshold
+            if not np.any(mask[s]):
                 data.extend(footer.tobytes())
                 continue
             
-            indices = np.nonzero(mask)[0].astype(ispeck_dtype)
-            real_vals = spec_array_real[s, mask].astype(ispeck_dtype)
-            imag_vals = spec_array_imag[s, mask].astype(ispeck_dtype)
-            indices = np.where(power[s] > thresholds)[0]
+            indices = np.nonzero(mask[s])[0]
+            real_vals = spec_array_real[s, mask[s]]
+            imag_vals = spec_array_imag[s, mask[s]]
 
             # pack as [index, real, imag]
             triplets = np.column_stack((indices, real_vals, imag_vals)).astype(ispeck_dtype)
