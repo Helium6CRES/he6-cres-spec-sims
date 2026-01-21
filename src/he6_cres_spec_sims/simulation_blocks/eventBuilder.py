@@ -22,18 +22,13 @@ class EventBuilder:
         # beta_num denotes the total number of betas produced in the trap.
         beta_num = 0
 
-        # if simulating full daq we instead use the beta monitor rate to determine the number of events we should be seeing
-        if self.config.settings.sim_daq==True:
-            events_to_simulate = self.physics.number_of_events()
-            betas_to_simulate = np.inf
-        else:
-            events_to_simulate = self.config.physics.events_to_simulate
-            betas_to_simulate = self.config.physics.betas_to_simulate
+        events_to_simulate = self.config.physics.events_to_simulate
+        betas_to_simulate = self.config.physics.betas_to_simulate
 
-            if events_to_simulate == -1:
-                events_to_simulate = np.inf
-            if betas_to_simulate == -1:
-                betas_to_simulate = np.inf
+        if events_to_simulate == -1:
+            events_to_simulate = np.inf
+        if betas_to_simulate == -1:
+            betas_to_simulate = np.inf
 
         print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
@@ -42,7 +37,7 @@ class EventBuilder:
             is_trapped = False
 
             while not is_trapped and beta_num < betas_to_simulate:
-                if beta_num % 250 == 0:
+                if beta_num % 2500 == 0:
                     print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
                     print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
 
@@ -50,34 +45,25 @@ class EventBuilder:
                 energy = self.physics.generate_beta_energy()
                 beta_num += 1
 
-                single_segment_df = self.construct_untrapped_segment_df(initial_position, initial_direction, energy, event_num, beta_num)
-
-                is_trapped = self.trap_condition(single_segment_df)
+                single_event_df = self.construct_untrapped_track_df(initial_position, initial_direction, energy, event_num, beta_num)
+                is_trapped = self.trap_condition(single_event_df)
 
             if event_num == 0:
-                # Edge case exists where event 0 can save an untrapped beta
-                # Can usually be resolved by setting a higher betas_to_simulate, unless there's a problem with config causing untrapped betas to generate
-                # TODO: resolve this with better control flow
-                if not is_trapped:
-                    print("Reached betas_to_simulate without generating a trapped beta")
-                trapped_event_df = single_segment_df
+                trapped_event_df = single_event_df
 
             elif beta_num == betas_to_simulate or not is_trapped:
                 print("Reached betas_to_simulate without generating a trapped beta")
                 break
 
             else:
-                print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
-                trapped_event_df = pd.concat([trapped_event_df, single_segment_df], ignore_index=True)
+                trapped_event_df = pd.concat([trapped_event_df, single_event_df], ignore_index=True)
 
             event_num += 1
         return trapped_event_df
 
-    def construct_untrapped_segment_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
+    def construct_untrapped_track_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
         """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
         """
-        # if np.any(np.isnan(beta_energy)):
-        #    breakpoint()
         # Initial beta position and direction.
         initial_rho_pos = beta_position[0]
         initial_phi_pos = beta_position[1]
@@ -100,31 +86,29 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
-        # debugging
-        if np.any(np.isnan(rho_center)):
-            print("WARNING: rho_center is nan")
-            # breakpoint()
-        if np.any(rho_center > 5.78e-3):
-            print(f"WARNING: rho_center = {rho_center} exceeds waveguide radius!")
-            # breakpoint()
+        #if np.any(np.isnan(rho_center)):
+        #    print("WARNING: rho_center is nan")
+        #    # breakpoint()
+        #if np.any(rho_center > 5.78e-3):
+        #    print(f"WARNING: rho_center = {rho_center} exceeds waveguide radius!")
+        #    # breakpoint()
 
         center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
 
         # Use B at turning point to determine if trapped
         b_min = self.config.trap_profile.Bmin(rho_center)
         b_max = self.config.trap_profile.Bmax(rho_center)
-        b_turn = b_min / pow( math.sin(center_theta / RAD_TO_DEG), 2)
+        b_turn = b_min / pow( np.sin(center_theta / RAD_TO_DEG), 2)
 
         # Use trapped_initial_theta to determine if trapped.
         trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
         max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
         min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
 
-
-        segment_properties = {
-            "energy": beta_energy,
+        track_properties = {
+            "energy": beta_energy, #start energy
             "gamma": sc.gamma(beta_energy),
-            "energy_stop": 0.0,
+            "end_energy": 0.0,
             "initial_rho_pos": initial_rho_pos,
             "initial_phi_pos": initial_phi_pos,
             "initial_zpos": initial_zpos,
@@ -141,69 +125,77 @@ class EventBuilder:
             "trapped_initial_theta": trapped_initial_theta,
             "max_radius": max_radius,
             "min_radius": min_radius,
-            "avg_cycl_freq": 0.0,
             "b_avg": 0.0,
-            "freq_stop": 0.0,
+            "start_freq": 0.0,
+            "end_freq": 0.0,
+            "start_time": np.nan,
+            "end_time": np.nan,
+            "start_time_in_trap_acq": np.nan,
             "zmax": 0.0,
             "zmin": 0.0,
             "axial_freq": 0.0,
             "grad_b_freq": 0.0,
             "mod_index": 0.0,
-            "segment_power": 0.0,
+            "track_power": 0.0,
             "slope": 0.0,
-            "segment_length": 0.0,
-            "band_power_start": np.nan,
-            "band_power_stop": np.nan,
-            "band_num": np.nan,
-            "segment_num": 0,
-            "event_num": event_num,
-            "beta_num": beta_num,
-            "fraction_of_spectrum": self.physics.fraction_of_spectrum,
-            "energy_accept_high": self.physics.energy_acceptance_high,
-            "energy_accept_low": self.physics.energy_acceptance_low,
-            "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
-            "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
+       #     "band_power_start": np.nan,
+       #     "band_power_stop": np.nan,
+       #     "band_num": np.nan,
+       #     "segment_num": 0,
+       #     "fraction_of_spectrum": self.physics.fraction_of_spectrum,
+       #     "energy_accept_high": self.physics.energy_acceptance_high,
+       #     "energy_accept_low": self.physics.energy_acceptance_low,
+       #     "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
+       #     "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
             "trap_center": 0.0, # rename to z_center?
             "b_min": b_min,
             "b_max": b_max, # not used much, could get rid of this
             "b_turn": b_turn,
+            "track_length": 0.0,
+            "track_num": 0,
+            "event_num": event_num,
+            "beta_num": beta_num,
+            "acq_num": np.nan,
+            "trap_acq_num": np.nan,
         }
 
-        segment_df = pd.DataFrame(segment_properties, index=[event_num])
+        event_df = pd.DataFrame(track_properties, index=[event_num])
 
-        return segment_df
+        return event_df
 
-    def trap_condition(self, segment_df):
-        """ Returns whether beta (described by segment_df column row) is trapped or not
+    def trap_condition(self, track_df):
+        """ Returns whether beta (described by track_df column row) is trapped or not
         """
-        segment_df = segment_df.reset_index(drop=True)
+        track_df = track_df.reset_index(drop=True)
 
-        if segment_df.shape[0] != 1:
+        if track_df.shape[0] != 1:
             raise ValueError("trap_condition(): Input segment not a single row.")
-       
-        initial_field = segment_df["initial_field"][0]
-        initial_theta = segment_df["initial_theta"][0]
-        trapped_initial_theta = segment_df["trapped_initial_theta"][0]
-        rho_center = segment_df["rho_center"][0]
-        max_radius = segment_df["max_radius"][0]
-        energy = segment_df["energy"][0]
-        b_turn = segment_df["b_turn"][0]
-        b_max = segment_df["b_max"][0]
 
-        if initial_field > b_max:
-            # print("Not Trapped: beta generated at initial field above main field")
-            return False
+        #initial_field = track_df["initial_field"][0]
+        #initial_theta = track_df["initial_theta"][0]
+        #trapped_initial_theta = track_df["trapped_initial_theta"][0]
+        rho_center = track_df["rho_center"][0]
+        max_radius = track_df["max_radius"][0]
+        #energy = track_df["energy"][0]
+        b_turn = track_df["b_turn"][0]
+        b_max = track_df["b_max"][0]
 
+        #if initial_field > b_max:
+        #    # print("Not Trapped: beta generated at initial field above main field")
+        #    return False
+
+
+        #is it not a real number if init_field > b_max
         if b_turn > b_max:
             # print("Not Trapped: Turning point beyond trap limits.")
             return False
 
-        if initial_theta < trapped_initial_theta:
-            # print("Not Trapped: Pitch angle too small.")
-            return False
+        #if initial_theta < trapped_initial_theta:
+        #    # print("Not Trapped: Pitch angle too small.")
+        #    return False
 
         if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
             # print("Not Trapped: Collided with guide wall.")
             return False
-        
+
         return True

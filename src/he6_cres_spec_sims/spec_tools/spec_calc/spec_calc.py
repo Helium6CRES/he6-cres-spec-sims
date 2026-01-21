@@ -29,6 +29,25 @@ from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
 
+def central_diff(f, x, dx=1e-6):
+    """
+    Central-difference 1st derivative to replace deprecated scipy.misc.derivative
+
+    Parameters
+    f: callable
+        function to take derivative of
+    x: float
+        point at which to take 1st derivative
+    dx: float, optional
+        Step size
+
+    Returns
+    float
+        Approximation of 1st derivative of f at x
+    """
+    return (f(x + dx) - f(x - dx)) / (2 * dx)
+
+
 # Simple special relativity functions.
 
 
@@ -66,7 +85,7 @@ def freq_to_energy(frequency, field):
     frequency in Hz, magnetic field in Tesla, and pitch angle
     at 90 degrees.
     """
-    
+
     gamma = Q * field / (2 * PI * frequency * M)
     if np.any(gamma < 1):
         gamma = 1
@@ -106,7 +125,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
 
     if trap_profile.is_trap:
 
-        Bmin = trap_profile.Bmin(rho) 
+        Bmin = trap_profile.Bmin(rho)
         Bcurr = trap_profile.field_strength(rho, zpos)
 
         theta_center_calc =  np.arcsin((np.sqrt(Bmin / Bcurr)) * np.sin(pitch_angle / RAD_TO_DEG)) * RAD_TO_DEG
@@ -139,7 +158,7 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-        min_field = trap_profile.Bmin(rho) 
+        min_field = trap_profile.Bmin(rho)
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -167,8 +186,7 @@ def min_radius(energy, center_pitch_angle, rho, trap_profile):
     """
 
     if trap_profile.is_trap:
-
-        min_field = trap_profile.Bmin(rho) 
+        min_field = trap_profile.Bmin(rho)
         max_field = min_field / (np.sin(center_pitch_angle / RAD_TO_DEG)) ** 2
 
         center_radius = cyc_radius(energy, min_field, center_pitch_angle)
@@ -197,7 +215,7 @@ def min_theta(rho, zpos, trap_profile):
         # Be careful here. Technically the Bmax doesn't occur at a constant z.
         Bmax = trap_profile.field_strength(rho, trap_profile.trap_width[1])
         Bz = trap_profile.field_strength(rho, zpos)
-        
+
         if Bz>Bmax:
             # avoid arcsin error, will be handled by trap_condition anyways
             return False
@@ -228,12 +246,13 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
             # Ok, so does this mean we now have an energy dependence on zmax? Yes.
             c_r = cyc_radius( energy, trap_profile.Bmin(rho), center_pitch_angle)
             rho_p = np.sqrt(rho**2 + c_r**2 / 2)
-            
+
+            #XXXX
             if np.any(rho_p > 0.578e-2):
                 print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
-            min_field = trap_profile.Bmin(rho_p) 
-            max_field = trap_profile.Bmax(rho_p) 
+            min_field = trap_profile.Bmin(rho_p)
+            max_field = trap_profile.Bmax(rho_p)
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
             if max_reached_field > max_field:
@@ -269,7 +288,6 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
        One would ideally prefer minimization which was not looped (with np.vectorize)
        In practice, library multi-dimensional minimizers are slower, even if Jacobian is diagonal
     """
-    
 
     if trap_profile.is_trap:
 
@@ -288,7 +306,7 @@ def min_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False, max_z =
             if rho_p > 0.578e-2:
                 print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
 
-            min_field = trap_profile.Bmin(rho_p) 
+            min_field = trap_profile.Bmin(rho_p)
             max_field = trap_profile.Bmax(rho_p)
 
             max_reached_field = min_field / pow( math.sin(center_pitch_angle / RAD_TO_DEG), 2)
@@ -376,7 +394,7 @@ def semiopen_simpson(v):
 
 def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=200):
     """Calculates the axial frequency of trapped electrons."""
-    
+
     if trap_profile.is_trap:
         # axial_freq of 90 deg otherwise returns 1./0. Would prefer to get correct limit
         # Sets allowed range, "clipping" the pitches at 90 deg.
@@ -404,12 +422,12 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
         zmax_arr = np.atleast_1d(np.array(zmax))
         zmax_arr = zmax_arr[np.newaxis,:]
-        
+
         zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
 
-        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile) 
+        zmin = min_zpos(energy, center_pitch_angle, rho, trap_profile)
         zmin_arr = np.atleast_1d(np.array(zmin))
         zmin_arr = zmin_arr[np.newaxis,:]
 
@@ -417,9 +435,9 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         Bturn_arr = Bturn_arr[np.newaxis,:]
 
         f = lambda z: 1. / velocity(energy) / np.sqrt(1. - B(z)/Bturn_arr)
-        
+
         T_a = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
-        
+
         axial_frequency = 1. / T_a
 
         return axial_frequency
@@ -452,7 +470,7 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         rho_p = np.sqrt(rho**2 + c_r**2 / 2)
         if np.any(rho_p > 0.578e-2):
             print(f"rho_p = {rho_p} exceeds the waveguide radius, odd behavior may occur")
-        
+
         rho_pp = np.sqrt(rho**2 + c_r**2)
         if np.any(rho_pp > 0.578e-2):
             print(f"rho_pp = {rho_pp} exceeds the waveguide radius, odd behavior may occur")
@@ -480,14 +498,14 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         zc = trap_profile.trap_center(rho)
         zc_arr = np.atleast_1d(np.array(zc))
         zc_arr = zc_arr[np.newaxis,:]
-        
+
         Bturn_arr = np.atleast_1d(np.array(Bturn))
         Bturn_arr = Bturn_arr[np.newaxis,:]
 
         f = lambda z: ax_freq / velocity(energy) * Bpp(z) / np.sqrt(1. - Bp(z)/Bturn_arr)
 
-        b_avg = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints) 
-        
+        b_avg = 2 * fast_semiopen_simpson(f, zmax, zmin, zc, trap_profile.inverted, nIntegralPoints)
+
         return b_avg
 
     else:
@@ -551,7 +569,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
 
 
 def waveguide_beta(omega):
-    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode
+    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode)
     """
     # fixed experiment parameters
     waveguide_radius = 0.578e-2
@@ -656,6 +674,11 @@ def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_
     omega_c -= np.mean(omega_c)
     Phi = np.cumsum(omega_c) * dt
     expPhi = np.exp(1j * Phi)
+
+    #multiply by v_perp / vtot = sqrt(vtot^2 - vz^2) / vtot
+    vtot = velocity(energy)
+    expPhi *= np.sqrt( 1. - (vz/vtot)**2)
+
     yf = np.abs(fft(expPhi,norm="forward"))
     yf = yf[:nHarmonics//2]
     return yf
@@ -682,7 +705,6 @@ def power_larmor(field, frequency):
     energy = freq_to_energy(frequency, field)
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
@@ -695,7 +717,6 @@ def power_larmor_e(field, energy):
 
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
@@ -708,9 +729,13 @@ def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints =
     Calculates \int_{zmin}^{zmax} f(z) dz
     f: f(z) without change of variables
     zmax, zmin, zc: format as array before passing
-    
+
     Remember to double result for full period!
     '''
+
+    # See write-up for more information on this integral
+    #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
+    # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
 
     u = np.linspace(0,1., nIntegralPoints)
     du = u[1]
@@ -725,7 +750,7 @@ def fast_semiopen_simpson(f, zmax, zmin, zc, inverted = False, nIntegralPoints =
         z_arg2 = zmin*(1. - u**2) + zc*u**2
         integrand2 = (zc-zmin)*2*u*f(z_arg2)
         result2 = semiopen_simpson(integrand2) * du
-    else: 
+    else:
         result2 = result1
 
     return (result1 + result2)
