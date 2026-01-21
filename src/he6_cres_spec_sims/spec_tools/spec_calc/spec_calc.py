@@ -147,7 +147,7 @@ def cyc_radius(energy, field, pitch_angle):
 
     cyc_radius = (gamma(energy) * M * vel_perp) / (Q * field)
 
-    return cyc_radius
+    return np.abs(cyc_radius)
 
 
 def max_radius(energy, center_pitch_angle, rho, trap_profile):

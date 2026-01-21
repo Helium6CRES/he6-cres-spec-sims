@@ -74,14 +74,16 @@ class TrapFieldProfile:
         grid_points = 20 # (m)
         rho_array = np.linspace(0, waveguide_radius, grid_points)
         trap_center_array = np.zeros(np.size(rho_array))
-        
+
         for i in range(len(rho_array)):
-            trap_center_array[i] = self.find_trap_center(rho_array[i]) 
-        
-        # is extrapolate ever useful? 
-        trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=False)
-        
-        return trap_center_interp 
+            trap_center_array[i] = self.find_trap_center(rho_array[i])
+
+        # magnetic field extrapolation is useful. For guiding center position outside waveguide radius,
+        # magnetic field won't return Nans, mucking up (wasted) calculations. Betas get thrown out by
+        # trap_rad + rho_center < waveguide_radius anyways
+        trap_center_interp = CubicSpline(rho_array, trap_center_array, extrapolate=True)
+
+        return trap_center_interp
 
     def find_trap_center(self, rho = 0):
         """finds the z-position of the center of an inverted trap by minimizing"""
