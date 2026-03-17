@@ -17,7 +17,7 @@ class TrapFieldProfile:
 
         # there is probably a more elegant way to do this
         test_asym = False
-        
+
         if test_asym:
             self.field_strength = self.test_trap_asym
             self.trap_width = (-0.055,0.055)
@@ -129,10 +129,10 @@ class TrapFieldProfile:
         """
         Returns field strength for ideal asymmetrical harmonic trap
         """
-        
+
         a = 10
         b = 6
         test_center = 2.5e-2 
-        
+
         return ((z  > test_center) * ((z-test_center)**2/a**2 + self.main_field) + 
                 (z <= test_center) * ((z-test_center)**2/b**2 + self.main_field) - 1e-4)

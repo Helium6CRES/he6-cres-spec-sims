@@ -51,7 +51,7 @@ class EventBuilder:
             if event_num == 0:
                 trapped_event_df = single_event_df
 
-            elif beta_num == betas_to_simulate or not is_trapped:
+            elif beta_num == betas_to_simulate and not is_trapped:
                 print("Reached betas_to_simulate without generating a trapped beta")
                 break
 
