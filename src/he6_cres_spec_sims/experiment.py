@@ -115,12 +115,21 @@ class Experiment:
             raise ValueError("Directory already exists: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
-        isotope = experiment_params["isotope"]
-        events_to_simulate = experiment_params["events_to_simulate"]
-        betas_to_simulate = experiment_params["betas_to_simulate"]
-        seeds = experiment_params["rand_seeds"]
-        fields = experiment_params["fields_T"]
-        traps = experiment_params["traps_A"]
+        with open(base_config_path, "r") as f:
+            base_config_dict = yaml.load(f, Loader = yaml.FullLoader)
+
+        print(base_config_dict)
+        fields = (experiment_params["fields_T"]
+                  if "fields_T" in experiment_params.keys() 
+                  else [base_config_dict["EventBuilder"]["main_field"]])
+
+        traps = (experiment_params["fields_T"]
+                 if "fields_T" in experiment_params.keys()
+                 else [base_config_dict["EventBuilder"]["trap_current"]])
+        
+        seeds = (experiment_params["rand_seeds"] 
+                 if "rand_seeds" in experiment_params.keys() 
+                 else [None])
 
         for i, (seed, field, trap) in enumerate(zip(seeds, fields, traps)):
 
@@ -146,9 +155,17 @@ class Experiment:
                 config_dict["Settings"]["rand_seed"] = int(seed)
             else:
                 config_dict["Settings"]["rand_seed"] = None
-            config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
-            config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
-            #config_dict["Physics"]["energy"]["isotope"] = str(isotope)
+
+            if "events_to_simulate" in experiment_params.keys():
+                events_to_simulate = experiment_params["events_to_simulate"]
+                config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
+            if "betas_to_simulate" in experiment_params.keys():
+                betas_to_simulate = experiment_params["betas_to_simulate"]
+                config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
+            if "isotope" in experiment_params.keys():
+                isotope = experiment_params["isotope"]
+                config_dict["Physics"]["energy"]["isotope"] = str(isotope)
+
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
 
