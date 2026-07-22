@@ -183,7 +183,7 @@ class Field_profile:
         the calculated grid to a csv for faster excecution.
         """
         waveguide_radius = 0.578e-2  # (m)
-        trap_zmax = 5.5e-2  # (m)
+        trap_zmax = 10e-2  # (m)
 
         grid_edge_length = 4e-4  # (m), it was found that grid_edge_length = 5e-4 results in 1ppm agreement between field_stength and field_strength_interp
 
