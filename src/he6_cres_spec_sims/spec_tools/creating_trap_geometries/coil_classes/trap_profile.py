@@ -42,24 +42,6 @@ class Trap_profile(Field_profile):
             return None
             
         self._is_trap = True
-        self._trap_width = self.trap_width_calc()
-        
-    def trap_width_calc(self):
-        """
-        Calculates the trap width of the object trap_profile.
-        """
-    
-        field_func = self.field_strength
-        def func(z):
-            return -1 * field_func(0,z)
-        
-        maximum = fmin(func,0,xtol=1e-12)[0]
-        print("Trap width: ({},{})".format(-maximum,maximum))
-        print("Maximum Field: {}".format(-1 * func(maximum)))
-    
-        trap_width = (-maximum,maximum)
-        return trap_width
-        
 
     @property
     def main_field(self):
@@ -86,9 +68,3 @@ class Trap_profile(Field_profile):
     @property
     def field_scales(self):
         return self._field_scales
-        
-    @property
-    def trap_width(self):
-        return self._trap_width
-        
-    

@@ -19,7 +19,6 @@ class TrapFieldProfile:
         self.main_field = main_field
 
         self.field_strength = self.initialize_field_strength_interp()
-        self.trap_width = self.trap_width_calc()
 
         # TODO: Actually test to be sure it is a trap.
         self.is_trap = True
@@ -57,18 +56,3 @@ class TrapFieldProfile:
 
         #return evaluation function for use
         return field_interp.ev
-
-    def trap_width_calc(self):
-        """
-        Calculates the trap width of the object trap_profile.
-        """
-
-        field_func = self.field_strength
-        func = lambda z: -1 * field_func(0, z)
-
-        maximum = fmin(func, 0, xtol=1e-12)[0]
-        print("Trap width: ({},{})".format(-maximum, maximum))
-        print("Maximum Field: {}".format(-1 * func(maximum)))
-
-        trap_width = (-maximum, maximum)
-        return trap_width
