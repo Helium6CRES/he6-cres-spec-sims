@@ -116,7 +116,6 @@ class Experiment:
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]
-        events_to_simulate = experiment_params["events_to_simulate"]
         betas_to_simulate = experiment_params["betas_to_simulate"]
         seeds = experiment_params["rand_seeds"]
         fields = experiment_params["fields_T"]
@@ -146,9 +145,7 @@ class Experiment:
                 config_dict["Settings"]["rand_seed"] = int(seed)
             else:
                 config_dict["Settings"]["rand_seed"] = None
-            config_dict["Physics"]["events_to_simulate"] = int(events_to_simulate)
             config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
-            #config_dict["Physics"]["energy"]["isotope"] = str(isotope)
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
 
@@ -219,8 +216,6 @@ class ExpResults:
         tracks_list = []
         fields = []
 
-        # Figure out how many betas were sampled; depends on the mode (beta_num or event_num).
-        # Note that if this is -1 then you get the entire array (event_mode).
         beta_num = experiment_params["betas_to_simulate"]
 
         for i, config_path in enumerate(config_paths):

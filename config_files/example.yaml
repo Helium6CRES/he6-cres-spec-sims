@@ -6,7 +6,6 @@ Settings:
     sim_daq: False #If true will simulate daq and create spec file, if false no need to fill out daq section
 
 Physics:
-    events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
     betas_to_simulate : 1000
     freq_acceptance_low: 17.0e+9 #Note: this is the "extended bandwidth" corresponding to energies where betas can be born. Decreasing low is more important than increasing high.
     freq_acceptance_high: 20.8e+9

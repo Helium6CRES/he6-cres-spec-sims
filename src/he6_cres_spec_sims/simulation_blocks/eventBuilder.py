@@ -16,52 +16,36 @@ class EventBuilder:
     def run(self):
 
         print("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~\n")
-        print("Constructing a set of trapped events:")
-        # event_num denotes the number of trapped electrons simulated.
-        event_num = 0
+        print("Constructing a set of betas:")
+
         # beta_num denotes the total number of betas produced in the trap.
         beta_num = 0
 
-        events_to_simulate = self.config.physics.events_to_simulate
         betas_to_simulate = self.config.physics.betas_to_simulate
 
-        if events_to_simulate == -1:
-            events_to_simulate = np.inf
-        if betas_to_simulate == -1:
-            betas_to_simulate = np.inf
+        if betas_to_simulate < 0:
+            raise ValueError("betas_to_simulate cannot be negative.")
 
-        print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
+        print( f"Simulating: num_betas:{betas_to_simulate}")
 
-        while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
-            # generate trapped beta
-            is_trapped = False
+        for beta_num in range(betas_to_simulate):
+            if beta_num % 2500 == 0:
+                print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
 
-            while not is_trapped and beta_num < betas_to_simulate:
-                if beta_num % 2500 == 0:
-                    print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
-                    print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
+            initial_position, initial_direction  = self.physics.generate_beta_position_direction()
+            energy = self.physics.generate_beta_energy()
 
-                initial_position, initial_direction  = self.physics.generate_beta_position_direction()
-                energy = self.physics.generate_beta_energy()
-                beta_num += 1
+            single_beta_df = self.construct_untrapped_beta_df(initial_position, initial_direction, energy, beta_num)
 
-                single_event_df = self.construct_untrapped_track_df(initial_position, initial_direction, energy, event_num, beta_num)
-
-                is_trapped = self.trap_condition(single_event_df)
-
-            if event_num == 0:
-                trapped_event_df = single_event_df
-
-            elif beta_num == betas_to_simulate:
-                break
+            if beta_num == 0:
+                betas_df = single_beta_df
 
             else:
-                trapped_event_df = pd.concat([trapped_event_df, single_event_df], ignore_index=True)
+                betas_df = pd.concat([betas_df, single_beta_df], ignore_index=True)
 
-            event_num += 1
-        return trapped_event_df
+        return betas_df
 
-    def construct_untrapped_track_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
+    def construct_untrapped_beta_df( self, beta_position, beta_direction, beta_energy, beta_num):
         """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
         """
         # Initial beta position and direction.
@@ -73,7 +57,8 @@ class EventBuilder:
         initial_phi_dir = beta_direction[1]
 
         initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
-        initial_radius = sc.cyc_radius(beta_energy, initial_field, initial_theta)
+        magnetic_moment = sc.magnetic_moment(beta_energy, initial_theta, initial_field)
+        initial_radius = sc.cyc_radius(magnetic_moment, initial_field)
 
         # Given initial position, velocity vectors, compute guiding center position (x,y)
         # Note initial velocity vector (in x-y plane) is orthogonal to vector connecting guiding center to beta
@@ -84,78 +69,60 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
-        center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
+        hamiltonian = sc.hamiltonian(beta_energy, rho_center, initial_zpos, self.config.voltage)
+
+        #center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
 
         # Use trapped_initial_theta to determine if trapped.
-        trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
-        max_radius = sc.max_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
-        min_radius = sc.min_radius( beta_energy, center_theta, rho_center, self.config.trap_profile)
+        #trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
+
+        #max_radius = sc.max_radius( beta_energy, rho_center, self.config.trap_profile)
 
         track_properties = {
-            "energy": beta_energy, #start energy
-            "gamma": sc.gamma(beta_energy),
-            "end_energy": 0.0,
-            "initial_rho_pos": initial_rho_pos,
-            "initial_phi_pos": initial_phi_pos,
-            "initial_zpos": initial_zpos,
-            "initial_theta": initial_theta,
-            "cos_initial_theta": np.cos(initial_theta / RAD_TO_DEG),
-            "initial_phi_dir": initial_phi_dir,
-            "center_theta": center_theta,
-            "cos_center_theta": np.cos(center_theta / RAD_TO_DEG),
-            "initial_field": initial_field,
-            "initial_radius": initial_radius,
-            "center_x": center_x,
-            "center_y": center_y,
-            "rho_center": rho_center,
-            "trapped_initial_theta": trapped_initial_theta,
-            "max_radius": max_radius,
-            "min_radius": min_radius,
-            "b_avg": 0.0,
-            "start_freq": 0.0,
-            "end_freq": 0.0,
-            "start_time": np.nan,
-            "end_time": np.nan,
-            "start_time_in_trap_acq": np.nan,
-            "end_time_in_trap_acq": np.nan,
-            "zmax": 0.0,
+            # Conserved Quantities
+            "hamiltonian": hamiltonian, #H = E + V (where E = γmc**2. H = E if no electric potential)
+            "magnetic_moment": magnetic_moment,
+            # Initial Kinematic Properties
+            "start_energy": beta_energy, #note this is kinetic energy
+            "start_gamma": sc.gamma(beta_energy),
+            "start_rho_pos": initial_rho_pos,
+            "start_phi_pos": initial_phi_pos,
+            "start_zpos": initial_zpos,
+            "start_theta": initial_theta,
+            "start_cos_theta": np.cos(initial_theta / RAD_TO_DEG),
+            "start_phi_dir": initial_phi_dir,
+            "start_field": initial_field,
+            "start_radius": initial_radius,
+            "start_guiding_center_x": center_x,
+            "start_guiding_center_y": center_y,
+            "start_guiding_center_rho": rho_center,
+            #"trapped_initial_theta": trapped_initial_theta,
+            #"center_theta": center_theta,
+            #"cos_center_theta": np.cos(center_theta / RAD_TO_DEG),
+            #"max_radius": max_radius,
+            #Computed Properties
+            "trapped": False,
+            "z_turn_left": 0.0, #turning points of beta with z_turn_left < z_turn_right
+            "z_turn_right": 0.0,
             "axial_freq": 0.0,
             "grad_b_freq": 0.0,
-            "mod_index": 0.0,
             "track_power": 0.0,
             "slope": 0.0,
             "track_length": 0.0,
+            "start_time": np.nan,
+            "start_freq": 0.0, #depends on average <B(z) / γ(z)>
+            "start_time_in_trap_acq": np.nan,
+            #Final Kinematic Properties
+            "end_energy": 0.0,
+            "end_freq": 0.0,
+            "end_time": np.nan,
+            #Event IDs
             "track_num": 0,
-            "event_num": event_num,
             "beta_num": beta_num,
             "acq_num": np.nan,
             "trap_acq_num": np.nan,
         }
 
-        event_df = pd.DataFrame(track_properties, index=[event_num])
+        beta_df = pd.DataFrame(track_properties, index=[beta_num])
 
-        return event_df
-
-    def trap_condition(self, track_df):
-        """ Returns whether beta (described by track_df column row) is trapped or not
-        """
-        track_df = track_df.reset_index(drop=True)
-
-        if track_df.shape[0] != 1:
-            raise ValueError("trap_condition(): Input track not a single row.")
-
-        initial_theta = track_df["initial_theta"][0]
-        trapped_initial_theta = track_df["trapped_initial_theta"][0]
-        rho_center = track_df["rho_center"][0]
-        max_radius = track_df["max_radius"][0]
-        energy = track_df["energy"][0]
-
-        if initial_theta < trapped_initial_theta:
-            # print("Not Trapped: Pitch angle too small.")
-            return False
-
-        if rho_center + max_radius > self.config.eventbuilder.decay_cell_radius:
-            # print("Not Trapped: Collided with guide wall.")
-            return False
-
-        return True
+        return beta_df
