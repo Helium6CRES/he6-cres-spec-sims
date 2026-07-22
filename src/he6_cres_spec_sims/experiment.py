@@ -120,8 +120,9 @@ class Experiment:
         seeds = experiment_params["rand_seeds"]
         fields = experiment_params["fields_T"]
         traps = experiment_params["traps_A"]
+        voltages = experiment_params["voltages_V"]
 
-        for i, (seed, field, trap) in enumerate(zip(seeds, fields, traps)):
+        for i, (seed, field, trap, voltage) in enumerate(zip(seeds, fields, traps, voltages)):
 
             # Round the field because there are often small rounding errors.
             field = np.around(field, 6)
@@ -148,6 +149,7 @@ class Experiment:
             config_dict["Physics"]["betas_to_simulate"] = int(betas_to_simulate)
             config_dict["EventBuilder"]["main_field"] = float(field)
             config_dict["EventBuilder"]["trap_current"] = float(trap)
+            config_dict["EventBuilder"]["penning_voltage"] = float(voltage)
 
             with open(config_path, "w") as f:
                 yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
@@ -228,12 +230,14 @@ class ExpResults:
             config = sim_blocks.config.Config(config_path)
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
-            print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
+            penning_voltage = config.eventbuilder.penning_voltage
+            print("\nSet field: {}, Trap current: {}, Penning voltage {}\n".format(field, trap_current, penning_voltage))
             results = sim.Results.load(config_path)
             tracks = results.dmtracks
             tracks["simulation_num"] = i
             tracks["field"] = field
             tracks["trap_current"] = trap_current
+            tracks["penning_voltage"] = penning_voltage
             tracks_list.append(tracks)
 
         exp_results_dict["tracks"] = pd.concat(tracks_list)
