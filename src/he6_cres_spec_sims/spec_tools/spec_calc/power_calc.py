@@ -12,6 +12,8 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
     cylindrical waveguide around the point (center_x,center_y) with
     frequency in Hz and field in Tesla.
     See https://arxiv.org/abs/2405.06847 Eqs 18-20 (n,m,h=1)
+    Update: 03/17/26. J'_1 -> J_0/2 due to polarization. Slide 38
+    See https://drive.google.com/file/d/1HaMVEMzgdED2ZmGjPUBBO40FzuyzYoBH/view?usp=drive_link
     """
 
     center_rho = np.sqrt(center_x**2 + center_y**2)
