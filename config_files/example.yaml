@@ -26,7 +26,12 @@ Physics:
 EventBuilder:
     main_field : 0.75
     trap_current : .186
+    penning_voltage : 600.
     decay_cell_radius : 5.78e-3
+    trap_center_z : -0.0126 #note magnetic field gradients can shift axial motion center
+    mirror_rs : [0.0015, 0.025]
+    mirror_zs : [90.49e-3,941.95e-3]
+    kapton_zs : [-90.49e-3, 55.56] #with respect to trap_center_z, for killing events
 
 TrackBuilder:
     start_time:
@@ -51,7 +56,6 @@ TrackBuilder:
 SideBandBuilder:
     sideband_num: 3
     frac_total_track_power_cut : 0.01
-    harmonic_sidebands: False
     magnetic_modulation: True
 
 DMTrackBuilder:
@@ -65,7 +69,6 @@ DAQ:
     n_channels: 2 #Divide freq_bins into n_channel output files, per acquisition
     roach_avg: 2
     roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
-    build_labels: False
     noise_paths: #list of paths to .spec files. If not included or do not exist, default to white noise, constant gain
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_0.spec"
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_1.spec"
