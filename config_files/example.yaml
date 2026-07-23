@@ -26,7 +26,7 @@ Physics:
 EventBuilder:
     main_field : 0.75
     trap_current : .186
-    penning_voltage : 600.
+    penning_voltage : 600. #positive voltages are attractive in z, regardless of beta charge, in MC
     decay_cell_radius : 5.78e-3
     trap_center_z : -0.0126 #note magnetic field gradients can shift axial motion center
     mirror_rs : [0.0015, 0.025]

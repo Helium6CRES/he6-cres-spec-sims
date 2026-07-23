@@ -87,7 +87,8 @@ class TrapFieldProfile:
         V_array = V.reshape(Nrho, Nz)
 
         # Adjust the field values so they align with the given trap configuration.
-        V_array *= self.penning_voltage / hardcoded_reference_voltage
+        # Negative sign is so that "positive voltage Penning traps" always are attractive, in MC
+        V_array *= -1. * self.penning_voltage / hardcoded_reference_voltage
 
         # Now use the map_array to do the interpolation.
         volt_interp = RectBivariateSpline(rho_array, z_array, V_array)
