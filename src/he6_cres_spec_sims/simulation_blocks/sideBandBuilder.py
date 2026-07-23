@@ -14,37 +14,22 @@ class SideBandBuilder:
 
         print("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~\n")
         sideband_num = self.config.sidebandbuilder.sideband_num
-        magnetic_modulation = self.config.sidebandbuilder.magnetic_modulation
-        harmonic_sidebands = self.config.sidebandbuilder.harmonic_sidebands
 
         frac_total_track_power_cut = self.config.sidebandbuilder.frac_total_track_power_cut
 
         out_bands = []
 
         for tracks_index, row in tracks_df.iterrows():
-            if harmonic_sidebands:
-                sideband_amplitudes = sc.sideband_calc(
-                    row["energy"],
-                    row["rho_center"],
-                    row["start_freq"],
-                    row["axial_freq"],
-                    row["zmax"],
-                    self.config.trap_profile,
-                    magnetic_modulation=magnetic_modulation,
-                    num_sidebands=sideband_num,
-                )[0]
-            else:
-                sideband_amplitudes = sc.anharmonic_sideband_calc(
-                    row["energy"],
-                    row["center_theta"],
-                    row["rho_center"],
-                    row["start_freq"],
-                    row["axial_freq"],
-                    row["zmax"],
-                    self.config.trap_profile,
-                    magnetic_modulation=magnetic_modulation,
-                    num_sidebands=sideband_num,
-                )[0]
+            sideband_amplitudes = sc.sideband_calc(
+                row["energy"],
+                row["center_theta"],
+                row["rho_center"],
+                row["start_freq"],
+                row["axial_freq"],
+                row["zmax"],
+                self.config.trap_profile,
+                num_sidebands=sideband_num,
+            )[0]
 
             sidebands = []
 
