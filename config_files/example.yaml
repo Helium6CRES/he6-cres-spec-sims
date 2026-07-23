@@ -56,7 +56,6 @@ TrackBuilder:
 SideBandBuilder:
     sideband_num: 3
     frac_total_track_power_cut : 0.01
-    magnetic_modulation: True
 
 DMTrackBuilder:
     mixer_freq: 17.9e+9

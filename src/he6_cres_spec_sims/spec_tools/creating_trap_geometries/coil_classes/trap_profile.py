@@ -30,18 +30,14 @@ class Trap_profile(Field_profile):
         
         if not main_field > 0:
             print("WARNING: Main field not greater than 0")
-            print("Not a valid trap...")
-            self._is_trap = False
             return None
             
         elif not (self.field_derivative(0,0) == 0
                 and self.field_derivative(0,0,2) > 0):
             print("WARNING: Given field profile does not have a local minimum at z=0")
             print("Not a valid trap...")
-            self._is_trap = False
             return None
             
-        self._is_trap = True
 
     @property
     def main_field(self):
@@ -60,10 +56,6 @@ class Trap_profile(Field_profile):
                     base_current = coil.current_per_wire / self._main_field
                     coil.current_per_wire = base_current * value
             self._main_field = value
-        
-    @property
-    def is_trap(self):
-        return self._is_trap
         
     @property
     def field_scales(self):

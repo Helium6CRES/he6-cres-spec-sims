@@ -35,11 +35,6 @@ class Config:
         spec_tool.spec_calc functions take the trap_profile as a
         parameter.
 
-    field_strength: Trap_profile instance method
-        Quick access to field strength values. field_strength(rho,z)=
-        field magnitude in T at position (rho,z). Note that there is no
-        field variation in phi.
-
     Methods
     -------
     load_config_file(config_filename)
@@ -116,9 +111,10 @@ class Config:
         try:
             main_field = self.eventbuilder.main_field
             trap_current = self.eventbuilder.trap_current
+            penning_voltage = self.eventbuilder.penning_voltage
 
-            self.trap_profile = TrapFieldProfile(main_field, trap_current)
-            self.field_strength = self.trap_profile.field_strength
+            #object holding magnetic and electric (fields, potentials)...
+            self.trap_profile = TrapFieldProfile(main_field, trap_current, penning_voltage)
 
         except Exception as e:
             print("Field profile failed to load.")
