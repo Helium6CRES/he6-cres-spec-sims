@@ -56,7 +56,7 @@ class EventBuilder:
         initial_theta = beta_direction[0]
         initial_phi_dir = beta_direction[1]
 
-        initial_field = self.config.field_strength(initial_rho_pos, initial_zpos)
+        initial_field = self.config.trap_profile.Bz(initial_rho_pos, initial_zpos)
         magnetic_moment = sc.magnetic_moment(beta_energy, initial_theta, initial_field)
         initial_radius = sc.cyc_radius(magnetic_moment, initial_field)
 
@@ -69,7 +69,7 @@ class EventBuilder:
 
         rho_center = np.sqrt(center_x**2 + center_y**2)
 
-        hamiltonian = sc.hamiltonian(beta_energy, rho_center, initial_zpos, self.config.voltage)
+        hamiltonian = sc.hamiltonian(beta_energy, rho_center, initial_zpos, self.config.trap_profile.voltage)
 
         #center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
 
