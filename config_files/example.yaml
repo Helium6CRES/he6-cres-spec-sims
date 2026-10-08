@@ -10,37 +10,35 @@ Physics:
     freq_acceptance_low: 17.0e+9 #Note: this is the "extended bandwidth" corresponding to energies where betas can be born. Decreasing low is more important than increasing high.
     freq_acceptance_high: 20.8e+9
     energy:
-        distribution: "fixed"
-        value: 936150.1826851165
+        distribution: "beta_decay"
+        isotope: "Ne19"
+        b:  0.0
     rho:
         distribution: "uniform_annulus"
         rho_min : 0.0
-        rho_max : 5.78e-3
+        rho_max : 5.7608e-3 #machine: 5.7608 +/- 0.0127 mm
     z:
         distribution: "uniform"
-        low : 0
-        high : 0.042
-    min_theta : 88.0
+        low : -0.04
+        high : 0.04
+    min_theta : 88.2
     max_theta : 90.0
 
 EventBuilder:
-    main_field : 0.75
-    trap_current : .186
-    penning_voltage : 600. #positive voltages are attractive in z, regardless of beta charge, in MC
-    decay_cell_radius : 5.78e-3
-    trap_center_z : -0.0126 #note magnetic field gradients can shift axial motion center
-    mirror_rs : [0.0015, 0.025]
-    mirror_zs : [90.49e-3,941.95e-3]
-    kapton_zs : [-90.49e-3, 55.56] #with respect to trap_center_z, for killing events
+    decay_cell_radius : 5.7608e-3 #machine: 5.7608 +/- 0.0127 mm
+    trap_center_z : -0.0126 # Magnet geometry defines z = 0: -1.26 +/- 0.16 cmj
+    mirror_rs : [0.0203, 0.05] # kapton, QWP are thought to be dominant
+    mirror_zs : [90.49e-3,941.95e-3] #with respect to trap_center_z, for SNR reflections
+    kapton_zs : [-90.49e-3, 55.56e-3] #with respect to trap_center_z, for killing events
 
 TrackBuilder:
     start_time:
         distribution: "uniform"
         low: 0
-        high: 0.05
+        high: 1.00
     track_length:
-        distribution: "exponential"
-        tau: 5.0e-3
+        distribution: "fixed"
+        value: 10.0e-3
     energy_loss:
         distribution: "aseev"
         isotope : "H2"
@@ -49,13 +47,13 @@ TrackBuilder:
         value: 0.2
     frac_elastic: 1.00 #Fraction of scatters that are elastic (instantly escape)
     jump_num_max : 1
-    voltage_on_time_ms: 0.168
-    voltage_off_time_ms: 2.0
+    voltage_on_time_ms: 0.1638
+    voltage_off_time_ms: 1.8364
     voltage_fractional_offset: 0.1 #Eventually make a distribution?
 
 SideBandBuilder:
-    sideband_num: 3
-    frac_total_track_power_cut : 0.01
+    sideband_num: 2
+    frac_total_track_power_cut : 0.00
 
 DMTrackBuilder:
     mixer_freq: 17.9e+9
@@ -69,9 +67,9 @@ DAQ:
     roach_avg: 2
     roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
     noise_paths: #list of paths to .spec files. If not included or do not exist, default to white noise, constant gain
-         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_0.spec"
-         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_1.spec"
-    noise_temperature: 64.
+         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2026-05-11-16-18-45-399_0.spec"
+         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2026-05-11-16-18-45-399_1.spec"
+    noise_temperature: 70.
     spec_prefix: "SNR_dev"
     #Warning , zero-suppression + roach_inverted_flag=False + roach_avg > 2 is super slow due to thresholds not being set for that case. Just do .spec
     spec_suffix: "speck"
