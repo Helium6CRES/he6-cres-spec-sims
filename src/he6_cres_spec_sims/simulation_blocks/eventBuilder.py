@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 
+import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
+import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
+
 from .physics import *
 from he6_cres_spec_sims.constants import *
 
@@ -19,7 +22,9 @@ class EventBuilder:
         print("Constructing a set of betas:")
 
         # beta_num denotes the total number of betas produced in the trap.
+        # event_num denotes the total number of trapped betas produced in the trap.
         beta_num = 0
+        event_num = 0
 
         betas_to_simulate = self.config.physics.betas_to_simulate
 
@@ -28,6 +33,9 @@ class EventBuilder:
 
         print( f"Simulating: num_betas:{betas_to_simulate}")
 
+        #overwritten by DataFrame unless no trapped events
+        events_df = None
+
         for beta_num in range(betas_to_simulate):
             if beta_num % 2500 == 0:
                 print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
@@ -35,17 +43,26 @@ class EventBuilder:
             initial_position, initial_direction  = self.physics.generate_beta_position_direction()
             energy = self.physics.generate_beta_energy()
 
-            single_beta_df = self.construct_untrapped_beta_df(initial_position, initial_direction, energy, beta_num)
+            single_beta_df = self.construct_untrapped_beta_df(initial_position, initial_direction, energy, beta_num, event_num)
 
-            if beta_num == 0:
-                betas_df = single_beta_df
+            for event_index, event in single_beta_df.iterrows():
+                single_event_df = self.fill_in_start_properties(event)
 
+            #single_event_df (from fill_in_start_properties) should be a Series (single beta) so the following returns T/F
+            if not single_event_df["trapped"].iloc[0]:
+                continue
+
+            if event_num == 0:
+                events_df = single_event_df
             else:
-                betas_df = pd.concat([betas_df, single_beta_df], ignore_index=True)
+                #note that event_num only gets put into events_df if event is trapped
+                events_df = pd.concat([events_df, single_event_df], ignore_index=True)
 
-        return betas_df
+            event_num += 1
 
-    def construct_untrapped_beta_df( self, beta_position, beta_direction, beta_energy, beta_num):
+        return events_df
+
+    def construct_untrapped_beta_df( self, beta_position, beta_direction, beta_energy, beta_num, event_num):
         """ Computes e.g. guiding center position, range of cyclotron radii from beta parameters
         """
         # Initial beta position and direction.
@@ -71,12 +88,13 @@ class EventBuilder:
 
         hamiltonian = sc.hamiltonian(beta_energy, rho_center, initial_zpos, self.config.trap_profile.voltage)
 
-        #center_theta = sc.theta_center( initial_zpos, rho_center, initial_theta, self.config.trap_profile)
+        initial_gamma = sc.gamma(beta_energy)
 
-        # Use trapped_initial_theta to determine if trapped.
-        #trapped_initial_theta = sc.min_theta( rho_center, initial_zpos, self.config.trap_profile)
+        initial_cos_theta = np.cos(initial_theta / RAD_TO_DEG)
 
-        #max_radius = sc.max_radius( beta_energy, rho_center, self.config.trap_profile)
+        #all in eV
+        initial_momentum = np.sqrt( (beta_energy + ME)**2 - ME**2)
+        initial_pz = initial_momentum * initial_cos_theta
 
         track_properties = {
             # Conserved Quantities
@@ -84,24 +102,25 @@ class EventBuilder:
             "magnetic_moment": magnetic_moment,
             # Initial Kinematic Properties
             "start_energy": beta_energy, #note this is kinetic energy
-            "start_gamma": sc.gamma(beta_energy),
-            "start_rho_pos": initial_rho_pos,
-            "start_phi_pos": initial_phi_pos,
-            "start_zpos": initial_zpos,
+            "start_momentum": initial_momentum,
+            "start_gamma": initial_gamma,
+            "start_rho": initial_rho_pos,
+            "start_phi": initial_phi_pos,
+            "start_z": initial_zpos,
             "start_theta": initial_theta,
-            "start_cos_theta": np.cos(initial_theta / RAD_TO_DEG),
+            "start_cos_theta": initial_cos_theta,
             "start_phi_dir": initial_phi_dir,
             "start_field": initial_field,
             "start_radius": initial_radius,
+            "start_pz": initial_pz,
             "start_guiding_center_x": center_x,
             "start_guiding_center_y": center_y,
             "start_guiding_center_rho": rho_center,
-            #"trapped_initial_theta": trapped_initial_theta,
-            #"center_theta": center_theta,
+            "min_theta": np.nan,
             #"cos_center_theta": np.cos(center_theta / RAD_TO_DEG),
-            #"max_radius": max_radius,
+            "max_radius": np.nan,
             #Computed Properties
-            "trapped": False,
+            "trapped": True,
             "z_turn_left": 0.0, #turning points of beta with z_turn_left < z_turn_right
             "z_turn_right": 0.0,
             "axial_freq": 0.0,
@@ -112,17 +131,98 @@ class EventBuilder:
             "start_time": np.nan,
             "start_freq": 0.0, #depends on average <B(z) / γ(z)>
             "start_time_in_trap_acq": np.nan,
+            "b_avg": 0.0,
             #Final Kinematic Properties
             "end_energy": 0.0,
             "end_freq": 0.0,
             "end_time": np.nan,
+            "end_time_in_trap_acq": np.nan,
             #Event IDs
-            "track_num": 0,
-            "beta_num": beta_num,
-            "acq_num": np.nan,
+            "beta_num": beta_num, # trapped + untrapped e± ID
+            "event_num": event_num, # trapped e± ID
+            "track_num": 0, # scatter-free time segment for a given event
+            "acq_num": np.nan, # "second" of data in simulated run
             "trap_acq_num": np.nan,
         }
 
         beta_df = pd.DataFrame(track_properties, index=[beta_num])
 
         return beta_df
+
+    def fill_in_start_properties(self, incomplete_scattered_events_df):
+        """ Assigns calculated properties (e.g. axial frequency, power, slope, etc.)
+            to beta with given (E, theta, rho) in the magnetic field profile
+        """
+
+        df = incomplete_scattered_events_df.copy()
+        trap_profile = self.config.trap_profile
+        main_field = self.config.eventbuilder.main_field
+        decay_cell_radius = self.config.eventbuilder.decay_cell_radius
+
+        # Calculate all relevant track parameters. Order matters here.
+
+        #Rough wall effect calculation XXX Fix me for off axis gradient
+        if ((df["start_guiding_center_rho"] + df["start_radius"] )  >= decay_cell_radius ):
+            df["trapped"] = False
+            return df.to_frame().T
+
+        #determine whether trapped or not
+        zKapton =  self.config.eventbuilder.kapton_zs
+
+        # compute axial motion to determine whether it hits the walls or not. If so, exit & report as untrapped
+        sol = sc.axial_trajectory(df["hamiltonian"], df["magnetic_moment"], df["start_guiding_center_rho"], df["start_z"], df["start_pz"], trap_profile, zKapton)
+
+        #convenient to have default as trapped == True until shown to be untrapped
+        #as there are multiple ways to be untrapped (walls || windows)
+        if sol == False:
+            df["trapped"] = False
+            return df.to_frame().T
+
+        #returns None, None if hits walls OR if axial period too long (>1 μs)
+        turning_positions, axial_period = sc.get_turning_points_axial_period(sol)
+        if turning_positions is None:
+            df["trapped"] = False
+            return df.to_frame().T
+
+        zTurningPoints = [min(turning_positions), max(turning_positions)]
+
+        b_avg = sc.get_b_avg(sol, df["start_guiding_center_rho"], axial_period, trap_profile)
+        #Note for Penning trapping, this computes the mean <B/γ>, denominator can vary
+        freq_start = sc.get_avg_cyc_freq(sol, df["hamiltonian"], df["start_guiding_center_rho"], axial_period, trap_profile)
+
+        df["axial_freq"] = 1. / axial_period
+        df["max_radius"] = sc.max_radius(df["magnetic_moment"], df["start_guiding_center_rho"], zTurningPoints, trap_profile)
+        df["min_theta"] = sc.min_theta(df["magnetic_moment"], df["hamiltonian"], df["start_guiding_center_rho"], zTurningPoints, trap_profile)
+        #more exact wall effect, using maximum cylotron radius
+        if ((df["start_guiding_center_rho"] + df["max_radius"] )  >= decay_cell_radius ):
+            df["trapped"] = False
+            return df.to_frame().T
+
+        #freq_start = sc.energy_to_freq(df["start_energy"], b_avg)
+        #grad_b_freq = sc.grad_b_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
+
+        track_radiated_power_te11 = (
+            pc.power_calc(
+                df["start_guiding_center_x"],
+                df["start_guiding_center_y"],
+                freq_start,
+                b_avg,
+                decay_cell_radius,
+            )
+        )
+
+        track_radiated_power_tot = sc.power_larmor(b_avg, freq_start)
+        slope = sc.df_dt( df["start_energy"], b_avg, track_radiated_power_tot)
+
+        df["b_avg"] = b_avg
+        df["start_freq"] = freq_start
+        #df["grad_b_freq"] = grad_b_freq
+
+        df["z_turn_left"] = zTurningPoints[0]
+        df["z_turn_right"] = zTurningPoints[1]
+
+        df["slope"] = slope
+        df["track_power"] = track_radiated_power_te11
+
+        #return a single rowed DataFrame
+        return df.to_frame().T

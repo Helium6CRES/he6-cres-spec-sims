@@ -46,17 +46,23 @@ class Simulation:
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
+        bands = []
         tracks_df = eventbuilder.run()
-        tracks_df, bands = trackbuilder.run(tracks_df)
-        bands = sidebandbuilder.run(tracks_df, bands)
-        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
+
+        #does the below only if there are trapped events
+        if tracks_df is not None:
+            tracks_df, bands = trackbuilder.run(tracks_df)
+            bands = sidebandbuilder.run(tracks_df, bands)
+            downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
+            # Save the results of the simulation:
+            # For now only write downmixed_tracks to keep things lightweight.
+            results = Results(downmixed_tracks_df, bands)
+            results.save(self.config_path)
+        else:
+            print("No trapped events! Skipping simulation...")
+
         if self.config.settings.sim_daq:
             spec_array = daq.run(bands)
-
-        # Save the results of the simulation:
-        # For now only write downmixed_tracks to keep things lightweight.
-        results = Results(downmixed_tracks_df, bands)
-        results.save(self.config_path)
 
         return None
 

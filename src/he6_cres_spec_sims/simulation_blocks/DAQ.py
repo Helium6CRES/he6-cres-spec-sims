@@ -57,7 +57,7 @@ class DAQ:
         self.gain_overall_array = self.estimate_gain()
 
         #Save signal gain as arrays to reference for later (much faster than generating on the fly for each signal)
-        self.signal_gain_array = self.signal_gains(self.config.sidebandbuilder.sideband_num, self.freq_axis)
+        self.signal_gain_array = self.signal_gains(self.config.sidebandbuilder.sideband_num, self.freq_axis,  self.config.eventbuilder.mirror_rs, self.config.eventbuilder.mirror_zs)
 
         # Fast estimation of zero-suppression thresholds
         # We call it for both spec and speck, so that the rng for fake bands are the same
@@ -96,12 +96,14 @@ class DAQ:
         #return np.sqrt(G/2.)
         return np.sqrt(G)
 
-    def signal_gains(self, max_sideband_order, f, r=[0.015,0.025], L = [90.49e-3,941.95e-3]):
+    def signal_gains(self, max_sideband_order, f, r,z):
         gSignal = np.ones(shape=(max_sideband_order+1, f.size)) + 0j
+        z = np.array(z)
+        L = np.abs(z - self.config.eventbuilder.trap_center_z)
         #perhaps there is a cleaner/clearer/more clever way to do this. Sum over reflective surfaces, compute for each sideband
         #(-1)^s only valid exactly for harmonic traps
         for i in range(len(r)):
-            vTmp = r[i] * np.exp(2 * 1j * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L[i])
+            vTmp = r[i] * np.exp(2 * 1j * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq), self.config.eventbuilder.decay_cell_radius) * L[i])
             for s in range(max_sideband_order + 1):
                 gSignal[s,:] += (-1)**s * vTmp
 
@@ -111,8 +113,11 @@ class DAQ:
         """
         This function is responsible for building out the spec files and calling the below methods.
         """
+        self.bands = []
+
         # Flatten into a 1D NumPy array
-        self.bands = np.hstack(bands)
+        if len(bands):
+            self.bands = np.hstack(bands)
 
         # Define a random phase for each band. Need to be associated per track (lasting multiple chunks)
         # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
@@ -124,7 +129,7 @@ class DAQ:
         self.spec_file_paths = self.build_file_paths(self.n_acquisitions, self.n_channels, self.spec_files_dir)
         self.write_empty_files(self.spec_file_paths)
 
-        spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
+        spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins),dtype=np.complex128)
         initial_packet = 0
 
         for acq in range(self.n_acquisitions):
@@ -176,6 +181,7 @@ class DAQ:
         Later, this will be converted to the frequency domain S(f) via FFT, with the same dimensions
         """
         print(f"acq = {acq}, slices = [{start_slice}:{stop_slice}]")
+
         slice_start_time = start_slice * self.delta_t
         slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
@@ -245,7 +251,12 @@ class DAQ:
         Given signal time-series s(t), convert to frequency domain S(f) via FFT
         Returns frequency-domain (with phase)
         """
-        signal_time_series = self.get_signal_time_series(acq, start_slice, stop_slice)
+        num_slices = stop_slice - start_slice
+        signal_time_series = np.zeros((num_slices, self.pts_per_fft)).transpose()
+
+        if len(self.bands):
+            signal_time_series = self.get_signal_time_series(acq, start_slice, stop_slice)
+
         # LNA gain of 67dB (this should be a user parameter)
         signal_time_series *= (2./np.sqrt(KB * self.config.daq.noise_temperature * self.config.daq.freq_bw)) #ortho
 

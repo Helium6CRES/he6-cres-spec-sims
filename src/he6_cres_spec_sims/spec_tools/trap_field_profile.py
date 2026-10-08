@@ -1,3 +1,4 @@
+
 import csv
 import math
 import os
@@ -6,9 +7,9 @@ import time
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
-from scipy.optimize import fmin
+from scipy.optimize import fmin, minimize_scalar
 
-class TrapFieldProfile:
+class FieldMap:
     def __init__(self, main_field, trap_current, penning_voltage = 0):
 
         # TODO: May want to protect these variables with underscores?
@@ -19,7 +20,13 @@ class TrapFieldProfile:
         self.penning_voltage = penning_voltage
 
         self.Bz = self.initialize_Bz_interp()
-        self.voltage = self.initialize_voltage_interp()
+        self.voltage_uncentered = self.initialize_voltage_interp()
+
+        #The Penning trap map is not centered at z = 0
+        #It is convenient to use these lines function
+        penningTrapCenterZPosition = minimize_scalar(lambda z: -np.abs(self.voltage_uncentered(0,z)), bounds=(-0.05, 0.05), method='bounded')
+        print("Centering Penning Trap... Shifting: ", penningTrapCenterZPosition.x)
+        self.voltage = lambda rho, z: self.voltage_uncentered(rho, z + penningTrapCenterZPosition.x)
 
     def initialize_Bz_interp(self):
         """Returns function object f(rho, z) which returns magnetic field (magnitudes?) as a function of position"""

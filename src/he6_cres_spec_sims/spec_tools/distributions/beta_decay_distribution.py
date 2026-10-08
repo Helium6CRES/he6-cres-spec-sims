@@ -93,7 +93,7 @@ class BetaDecayDistribution(BaseDistribution):
         return np.clip(self.dNdE_unnormed_SM(W) * (1 + (self.b / W)), 0, np.inf)
 
     def fraction_of_spectrum(self):
-        print(self.W_min, self.W_max)
+        #print(self.W_min, self.W_max)
         spectrum_BW, norm_err = quad( self.dNdE, self.W_min, self.W_max,)
         spectrum_total, norm_err = quad( self.dNdE, 1, self.allowed_isotopes[self.isotope]["W_max"])
         return spectrum_BW / spectrum_total

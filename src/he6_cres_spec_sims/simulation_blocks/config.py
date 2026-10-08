@@ -1,7 +1,7 @@
 from pathlib import Path
 import yaml
 
-from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
+from he6_cres_spec_sims.spec_tools.trap_field_profile import FieldMap
 from he6_cres_spec_sims.spec_tools.distributions.distribution_interface import DistributionInterface
 
 class DotDict(dict):
@@ -114,7 +114,7 @@ class Config:
             penning_voltage = self.eventbuilder.penning_voltage
 
             #object holding magnetic and electric (fields, potentials)...
-            self.trap_profile = TrapFieldProfile(main_field, trap_current, penning_voltage)
+            self.trap_profile = FieldMap(main_field, trap_current, penning_voltage)
 
         except Exception as e:
             print("Field profile failed to load.")

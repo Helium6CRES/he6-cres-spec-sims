@@ -16,29 +16,33 @@ class SideBandBuilder:
         sideband_num = self.config.sidebandbuilder.sideband_num
 
         frac_total_track_power_cut = self.config.sidebandbuilder.frac_total_track_power_cut
+        decay_cell_radius = self.config.eventbuilder.decay_cell_radius
+        zKapton =  self.config.eventbuilder.kapton_zs
 
         out_bands = []
 
         for tracks_index, row in tracks_df.iterrows():
             sideband_amplitudes = sc.sideband_calc(
-                row["energy"],
-                row["center_theta"],
-                row["rho_center"],
-                row["start_freq"],
+                row["hamiltonian"],
+                row["magnetic_moment"],
+                row["start_guiding_center_rho"],
+                row["start_z"],
+                row["start_pz"],
                 row["axial_freq"],
-                row["zmax"],
                 self.config.trap_profile,
+                zKapton,
+                decay_cell_radius,
                 num_sidebands=sideband_num,
-            )[0]
+            )
 
             sidebands = []
 
-            for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
-                if sideband_amplitudes[i][1] > frac_total_track_power_cut:
+            for band_num in range(-sideband_num, sideband_num + 1):
+                if sideband_amplitudes[abs(band_num)] > frac_total_track_power_cut:
                     # fill in new avg_cycl_freq, band_power, band_num
-                    start_freq = sideband_amplitudes[i][0]
+                    start_freq = row["start_freq"] + band_num * row["axial_freq"]
                     # Note that the sideband amplitudes need to be squared to give power.
-                    band_power = sideband_amplitudes[i][1] ** 2 * row.track_power
+                    band_power = sideband_amplitudes[abs(band_num)]** 2 * row.track_power
 
                     freq_shift = start_freq - row["start_freq"]
                     new_track = bands[int(row["event_num"])][int(row["track_num"])].copy()
@@ -47,6 +51,7 @@ class SideBandBuilder:
                     new_track.set_power(band_power)
                     sidebands.append(new_track)
 
+            #event_num is used as an index to loop over events
             if int(row["event_num"]) >= len(out_bands):
                 out_bands.append([])
 
